@@ -101,6 +101,7 @@ object GameIcons {
         GameDestination.SecretService -> MinistrySecretService
         GameDestination.Science -> MinistryScience
         GameDestination.LawsSociety -> MinistryLawsSociety
+        GameDestination.Governance -> MinistryGovernance
         GameDestination.AudioSettings -> Icons.Default.VolumeUp
     }
 

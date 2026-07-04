@@ -10,96 +10,73 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Geopolitical war-room theme: deep navy backgrounds, stark white type,
- * and semantic green/red/orange for economic and crisis feedback.
+ * Nation State Simulator visual system: dark command-center chrome, blue primary, emerald accent.
  */
-private val WarRoomDarkColors = darkColorScheme(
-    primary = CommandGold,
-    onPrimary = DeepNavy,
-    primaryContainer = NavySurface,
-    onPrimaryContainer = StarkWhite,
-    secondary = InfoBlue,
-    onSecondary = DeepNavy,
-    secondaryContainer = SlateGray,
-    onSecondaryContainer = StarkWhite,
-    tertiary = WarningOrange,
-    onTertiary = DeepNavy,
-    tertiaryContainer = CrisisCrimson,
-    onTertiaryContainer = StarkWhite,
-    background = DeepNavy,
-    onBackground = StarkWhite,
-    surface = NavySurface,
-    onSurface = StarkWhite,
-    surfaceVariant = NavySurface,
-    onSurfaceVariant = NeutralGray,
-    outline = SlateOutline,
-    error = DeficitRed,
+private val NssColors = darkColorScheme(
+    primary = NssPrimary,
+    onPrimary = StarkWhite,
+    primaryContainer = NssSecondary,
+    onPrimaryContainer = NssForeground,
+    secondary = NssSky,
+    onSecondary = StarkWhite,
+    tertiary = NssAccent,
+    onTertiary = NssBackground,
+    background = NssBackground,
+    onBackground = NssForeground,
+    surface = NssCard,
+    onSurface = NssForeground,
+    surfaceVariant = NssSecondary,
+    onSurfaceVariant = NssMutedForeground,
+    outline = NssBorder,
+    error = NssDestructive,
     onError = StarkWhite,
-    errorContainer = CrisisCrimson,
-    onErrorContainer = StarkWhite,
 )
 
-private val WarRoomTypography = Typography(
+private val NssTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
-        lineHeight = 26.sp,
+        letterSpacing = 1.sp,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        letterSpacing = 0.5.sp,
     ),
     titleSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
+        fontSize = 11.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
+        fontSize = 10.sp,
+        letterSpacing = 1.5.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
+        fontSize = 9.sp,
+        letterSpacing = 1.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.4.sp,
+        fontSize = 8.sp,
+        letterSpacing = 1.2.sp,
     ),
 )
 
@@ -108,8 +85,8 @@ fun PresidentSimulatorTheme(
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = WarRoomDarkColors,
-        typography = WarRoomTypography,
+        colorScheme = NssColors,
+        typography = NssTypography,
         content = content,
     )
 }

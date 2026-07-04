@@ -11,3 +11,5 @@
 *.apk
 *.ap_
 *.aab
+
+build_install.log
