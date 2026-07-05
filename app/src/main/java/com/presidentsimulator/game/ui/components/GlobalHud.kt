@@ -105,7 +105,7 @@ fun GlobalHud(
                     letterSpacing = 2.sp,
                 )
                 Text(
-                    text = state.legal.ideology.displayName.uppercase(),
+                    text = "Chancellor M. Draven",
                     style = MaterialTheme.typography.labelSmall,
                     color = NssMutedForeground,
                 )
@@ -142,7 +142,7 @@ fun GlobalHud(
                     ) {
                         Text(
                             text = vital.value,
-                            color = NssForeground,
+                            color = if (vital.warn) Color(0xFFFCD34D) else NssForeground,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -273,6 +273,7 @@ private data class HudVital(
     val value: String,
     val trendPositive: Boolean,
     val trendTag: String,
+    val warn: Boolean = false,
 )
 
 private data class TrendDelta(
@@ -281,7 +282,7 @@ private data class TrendDelta(
 )
 
 private fun makeHudVital(label: String, value: String, trend: TrendDelta): HudVital =
-    HudVital(label, value, trend.positive, trend.tag)
+    HudVital(label, value, trend.positive, trend.tag, warn = !trend.positive)
 
 private fun trendFromHistory(values: List<Float>): TrendDelta {
     if (values.size < 2) {

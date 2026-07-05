@@ -1,54 +1,68 @@
 package com.presidentsimulator.game.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Tab
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AirplanemodeActive
+import androidx.compose.material.icons.filled.Anchor
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.ui.components.ActiveWarPanel
-import com.presidentsimulator.game.ui.components.BulkBuildControls
-import com.presidentsimulator.game.ui.theme.NeutralGray
-import com.presidentsimulator.game.ui.theme.ProfitGreen
-import com.presidentsimulator.game.ui.theme.WarningOrange
+import com.presidentsimulator.game.ui.components.NssAlertBanner
+import com.presidentsimulator.game.ui.components.NssBranchHeader
+import com.presidentsimulator.game.ui.components.NssCompactKpi
+import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.components.NssRecruitCard
+import com.presidentsimulator.game.ui.components.NssTabBar
+import com.presidentsimulator.game.ui.components.NssUnitCard
+import com.presidentsimulator.game.ui.components.formatMa2Money
+import com.presidentsimulator.game.ui.theme.NssAccent
+import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssEmerald
+import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.NssSky
+import com.presidentsimulator.game.ui.theme.NssViolet
 import com.presidentsimulator.game.viewmodel.DiplomacyViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toArmyString
 import com.presidentsimulator.game.viewmodel.toBudgetString
 import kotlin.math.roundToInt
 
-/**
- * Ministry of Defense: Personnel and Hardware tabs with bulk procurement.
- */
+private data class ForceUnit(
+    val name: String,
+    val count: Int,
+    val strength: Int,
+    val status: String,
+)
+
 @Composable
 fun MilitaryScreen(
     state: GameState,
@@ -57,16 +71,25 @@ fun MilitaryScreen(
 ) {
     val context = LocalContext.current
     val audio = remember(context) { GameAudioManager.getInstance(context) }
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Personnel", "Hardware")
+    var selectedTab by remember { mutableStateOf("FORCES") }
+    val tabs = listOf("FORCES", "RECRUITMENT", "LOGISTICS")
+    val military = state.military
     val activeWar = state.diplomacy.activeWar
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "Ministry of Defense",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(NssBackground),
+    ) {
+        NssMinistryBanner(
+            ministryLabel = "DEFENSE",
+            statPills = listOf(
+                "Power: ${state.effectiveCombatStrength.roundToInt()} pts",
+                "Personnel: ${military.personnel.toArmyString()}",
+                "Readiness: ${military.morale.roundToInt()}%",
+                "Budget: ${military.monthlyUpkeep.toBudgetString()}",
+            ),
+            gradientColors = NssGradients.Defense,
         )
 
         if (activeWar != null) {
@@ -77,263 +100,207 @@ fun MilitaryScreen(
                 onLaunchOffensive = viewModel::launchOffensive,
                 onHoldDefensiveLine = viewModel::holdDefensiveLine,
                 onProposeArmistice = viewModel::signArmistice,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        ScrollableTabRow(selectedTabIndex = selectedTab) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) },
-                )
-            }
-        }
+        NssTabBar(tabs = tabs, selectedTab = selectedTab, onTabSelected = { selectedTab = it })
 
-        when (selectedTab) {
-            0 -> PersonnelTab(state = state, viewModel = viewModel, audio = audio)
-            else -> HardwareTab(state = state, viewModel = viewModel, audio = audio)
-        }
-    }
-}
-
-@Composable
-private fun PersonnelTab(
-    state: GameState,
-    viewModel: GameViewModel,
-    audio: GameAudioManager,
-) {
-    val military = state.military
-    var draftFunding by remember(military.salaryFunding) {
-        mutableFloatStateOf(military.salaryFunding)
-    }
-    var recruitAmount by remember { mutableIntStateOf(1) }
-
-    val batchSize = DiplomacyViewModel.RECRUIT_BATCH_SIZE
-    val maxRecruits = DiplomacyViewModel.maxRecruitable(state)
-    val maxBatches = (maxRecruits / batchSize).toInt().coerceAtLeast(0)
-    val selectedTroops = (recruitAmount.coerceAtMost(maxBatches.coerceAtLeast(0)) * batchSize)
-        .coerceAtMost(maxRecruits.toLong())
-
-    val projectedUpkeep = remember(draftFunding, military) {
-        military.copy(salaryFunding = draftFunding).monthlyUpkeep
-    }
-    val projectedMorale = remember(draftFunding) {
-        (35f + draftFunding.coerceIn(0.5f, 1.5f) * 45f).coerceIn(0f, 100f)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Force Strength",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                MetricRow("Total troops", military.personnel.toArmyString())
-                MetricRow("Monthly upkeep", military.monthlyUpkeep.toBudgetString())
-                MetricRow("Army morale", "${military.morale.roundToInt()}%")
-                MetricRow("Combat readiness", state.effectiveCombatStrength.roundToInt().toString())
-            }
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Military Funding / Salaries",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Funding level: ${(draftFunding * 100f).roundToInt()}%",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Slider(
-                    value = draftFunding,
-                    onValueChange = { draftFunding = it },
-                    onValueChangeFinished = { viewModel.setSalaryFunding(draftFunding) },
-                    valueRange = DiplomacyViewModel.MIN_SALARY_FUNDING..DiplomacyViewModel.MAX_SALARY_FUNDING,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = "Projected morale: ${projectedMorale.roundToInt()}% · " +
-                        "Projected upkeep: ${projectedUpkeep.toBudgetString()}/mo",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (draftFunding >= 1f) ProfitGreen else WarningOrange,
-                )
-                Text(
-                    text = "Higher salaries improve morale and combat effectiveness but raise payroll.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NeutralGray,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Recruitment",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Batch size: ${batchSize.toArmyString()} troops · " +
-                        "Unit cost: ${DiplomacyViewModel.RECRUIT_COST_PER_SOLDIER.toBudgetString()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NeutralGray,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                BulkBuildControls(
-                    assetName = "Train Soldiers",
-                    currentCount = military.personnel.toInt().coerceAtMost(Int.MAX_VALUE),
-                    unitCost = DiplomacyViewModel.RECRUIT_COST_PER_SOLDIER * batchSize,
-                    selectedAmount = recruitAmount,
-                    maxAffordable = maxBatches,
-                    onAmountSelected = { recruitAmount = it },
-                    onBuild = { batches ->
-                        val troops = batches.toLong() * batchSize
-                        viewModel.recruitPersonnel(troops)
-                        audio.playBuildSuccess()
-                        recruitAmount = 1
-                    },
-                )
-                if (selectedTroops > 0L) {
-                    Text(
-                        text = "Order will train ${selectedTroops.toArmyString()} personnel.",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = NeutralGray,
-                    )
-                }
+            when (selectedTab) {
+                "FORCES" -> ForcesTab(state)
+                "RECRUITMENT" -> RecruitmentTab(state, viewModel, audio)
+                else -> LogisticsTab(state)
             }
         }
     }
 }
 
 @Composable
-private fun HardwareTab(
+private fun ForcesTab(state: GameState) {
+    val military = state.military
+    val armyUnits = listOf(
+        ForceUnit("Infantry Corps", military.personnel.toInt().coerceAtMost(999), military.morale.roundToInt(), "COMBAT READY"),
+        ForceUnit("Armored Brigade", military.tanks, 88, "COMBAT READY"),
+        ForceUnit("Artillery Regiment", (military.tanks / 2).coerceAtLeast(1), 91, "TRAINING"),
+    )
+    val navyUnits = listOf(
+        ForceUnit("Destroyer", military.ships.coerceAtMost(20), 82, "PATROL"),
+        ForceUnit("Frigate", (military.ships * 1.5).roundToInt(), 79, "PATROL"),
+        ForceUnit("Submarine", military.ships.coerceAtMost(8), 95, "COMBAT READY"),
+    )
+    val airUnits = listOf(
+        ForceUnit("Fighter Squadron", military.jets, 91, "COMBAT READY"),
+        ForceUnit("Bomber Wing", (military.jets / 3).coerceAtLeast(1), 76, "TRAINING"),
+        ForceUnit("Drone Fleet", (military.jets / 2).coerceAtLeast(1), 98, "ACTIVE OPS"),
+    )
+
+    BranchSection("ARMY", armyUnits.sumOf { it.count }, NssEmerald, Icons.Default.Security, NssGradients.Emerald, armyUnits)
+    BranchSection("NAVY", navyUnits.sumOf { it.count }, NssSky, Icons.Default.Anchor, NssGradients.Sky, navyUnits)
+    BranchSection("AIR", airUnits.sumOf { it.count }, NssViolet, Icons.Default.AirplanemodeActive, NssGradients.Violet, airUnits)
+}
+
+@Composable
+private fun BranchSection(
+    branch: String,
+    unitCount: Int,
+    accent: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    gradient: List<Color>,
+    units: List<ForceUnit>,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        NssBranchHeader(branch = branch, unitCount = unitCount, accentColor = accent, icon = icon)
+        units.chunked(2).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { unit ->
+                    NssUnitCard(
+                        unitName = unit.name,
+                        branch = branch,
+                        count = unit.count,
+                        strength = unit.strength,
+                        status = unit.status,
+                        maintLabel = "$${"%.1f".format((unit.count * 0.2).coerceAtLeast(0.1))}B/yr",
+                        headerGradient = gradient,
+                        accentColor = accent,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecruitmentTab(
     state: GameState,
     viewModel: GameViewModel,
     audio: GameAudioManager,
 ) {
-    val military = state.military
-    var selectedAmounts by remember {
-        mutableStateOf(MilitaryHardware.entries.associateWith { 1 })
-    }
+    var personnelQty by remember { mutableIntStateOf(0) }
+    var hardwareQtys by remember { mutableStateOf(MilitaryHardware.entries.associateWith { 0 }) }
+    val batchSize = DiplomacyViewModel.RECRUIT_BATCH_SIZE
+    val personnelCost = personnelQty * DiplomacyViewModel.RECRUIT_COST_PER_SOLDIER * batchSize
+    val hardwareCost = hardwareQtys.entries.sumOf { (hw, qty) -> hw.unitCost * qty }
+    val totalCost = personnelCost + hardwareCost
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                text = "Hardware Inventory",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Purchase with [ 1x | 10x | Max ]. Weapons bans and nuclear embargoes may block items.",
-                style = MaterialTheme.typography.bodySmall,
-                color = NeutralGray,
-            )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .border(1.dp, NssPrimary.copy(alpha = 0.4f))
+                .background(NssPrimary.copy(alpha = 0.08f))
+                .padding(16.dp),
+        ) {
+            Text("TOTAL COMMISSION COST", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+            Text(formatMa2Money(totalCost), color = NssPrimary, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
         }
-
-        items(MilitaryHardware.entries, key = { it.name }) { hardware ->
-            val inventory = when (hardware) {
-                MilitaryHardware.TANKS -> military.tanks
-                MilitaryHardware.FIGHTER_JETS -> military.jets
-                MilitaryHardware.NAVAL_SHIPS -> military.ships
-                MilitaryHardware.NUCLEAR_ARSENAL -> military.nuclearArsenal
-            }
-            val selected = selectedAmounts[hardware] ?: 1
-            val maxAffordable = DiplomacyViewModel.maxAffordableHardware(state, hardware)
-            val blockedReason = when {
-                hardware == MilitaryHardware.NUCLEAR_ARSENAL &&
-                    state.governance.nuclearEmbargoActive -> "Blocked by UN Nuclear Embargo"
-                hardware != MilitaryHardware.NUCLEAR_ARSENAL &&
-                    state.governance.weaponsBanActive -> "Blocked by UN Weapons Ban"
-                else -> null
-            }
-
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = hardware.displayName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = "Strength/unit: ${hardware.unitStrength}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = NeutralGray,
-                        )
-                    }
-                    if (blockedReason != null) {
-                        Text(
-                            text = blockedReason,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = WarningOrange,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                        )
-                    }
-                    BulkBuildControls(
-                        assetName = "Inventory",
-                        currentCount = inventory,
-                        unitCost = hardware.unitCost,
-                        selectedAmount = selected,
-                        maxAffordable = maxAffordable,
-                        onAmountSelected = { amount ->
-                            selectedAmounts = selectedAmounts.toMutableMap().apply {
-                                put(hardware, amount)
-                            }
-                        },
-                        onBuild = { amount ->
-                            viewModel.purchaseMilitaryHardware(hardware, amount)
-                            audio.playBuildSuccess()
-                            selectedAmounts = selectedAmounts.toMutableMap().apply {
-                                put(hardware, 1)
-                            }
-                        },
-                        actionLabel = "Buy",
-                    )
-                }
-            }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .border(1.dp, com.presidentsimulator.game.ui.theme.NssBorder)
+                .background(com.presidentsimulator.game.ui.theme.NssCard)
+                .padding(16.dp),
+        ) {
+            Text("AVAILABLE TREASURY", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+            Text(formatMa2Money(state.vitals.budget), color = com.presidentsimulator.game.ui.theme.NssForeground, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
         }
     }
-}
 
-@Composable
-private fun MetricRow(label: String, value: String) {
-    Row(
+    NssBranchHeader("ARMY", 1, NssEmerald, Icons.Default.Security)
+    NssRecruitCard(
+        name = "Infantry Division",
+        branch = "ARMY",
+        costLabel = formatMa2Money(DiplomacyViewModel.RECRUIT_COST_PER_SOLDIER * batchSize),
+        buildMonths = 6,
+        maintLabel = "${formatMa2Money(state.military.monthlyUpkeep / 10)}/yr",
+        quantity = personnelQty,
+        headerGradient = NssGradients.Emerald,
+        accentColor = NssEmerald,
+        onQuantityChange = { delta -> personnelQty = (personnelQty + delta).coerceAtLeast(0) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    NssBranchHeader("HARDWARE", MilitaryHardware.entries.size, NssSky, Icons.Default.Anchor)
+    MilitaryHardware.entries.chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { hardware ->
+                val qty = hardwareQtys[hardware] ?: 0
+                NssRecruitCard(
+                    name = hardware.displayName,
+                    branch = "HARDWARE",
+                    costLabel = formatMa2Money(hardware.unitCost),
+                    buildMonths = 12,
+                    maintLabel = "Str ${hardware.unitStrength}",
+                    quantity = qty,
+                    headerGradient = NssGradients.Sky,
+                    accentColor = NssSky,
+                    onQuantityChange = { delta ->
+                        hardwareQtys = hardwareQtys.toMutableMap().apply {
+                            put(hardware, ((get(hardware) ?: 0) + delta).coerceAtLeast(0))
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+
+    Text(
+        text = if (totalCost > 0) "SUBMIT PROCUREMENT ORDER — ${formatMa2Money(totalCost)}" else "SUBMIT PROCUREMENT ORDER",
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+            .border(1.dp, if (totalCost > 0) NssPrimary else com.presidentsimulator.game.ui.theme.NssBorder)
+            .background(if (totalCost > 0) NssPrimary.copy(alpha = 0.15f) else com.presidentsimulator.game.ui.theme.NssCard)
+            .clickable(enabled = totalCost > 0) {
+                if (personnelQty > 0) {
+                    viewModel.recruitPersonnel(personnelQty.toLong() * batchSize)
+                }
+                hardwareQtys.forEach { (hardware, qty) ->
+                    if (qty > 0) viewModel.purchaseMilitaryHardware(hardware, qty)
+                }
+                audio.playBuildSuccess()
+                personnelQty = 0
+                hardwareQtys = MilitaryHardware.entries.associateWith { 0 }
+            }
+            .padding(vertical = 16.dp),
+        color = if (totalCost > 0) NssPrimary else com.presidentsimulator.game.ui.theme.NssMutedForeground,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        fontSize = 13.sp,
+    )
+}
+
+@Composable
+private fun LogisticsTab(state: GameState) {
+    val military = state.military
+    val kpis = listOf(
+        Triple("TOTAL MAINT COST", military.monthlyUpkeep.toBudgetString(), false),
+        Triple("OVERALL READINESS", "${military.morale.roundToInt()}%", true),
+        Triple("COMBAT STRENGTH", state.effectiveCombatStrength.roundToInt().toString(), true),
+        Triple("PERSONNEL", military.personnel.toArmyString(), true),
+        Triple("DEFCON", military.defcon.toString(), military.defcon >= 3),
+        Triple("DEPLOYMENT", military.deployment.name, true),
+    )
+
+    kpis.chunked(3).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (label, value, good) ->
+                NssCompactKpi(label, value, if (good) "Operational" else "Attention needed", good, Modifier.weight(1f))
+            }
+            repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+        }
+    }
+
+    if (military.morale < 50f) {
+        NssAlertBanner("MORALE BELOW OPERATIONAL THRESHOLD — INCREASE SALARY FUNDING")
     }
 }

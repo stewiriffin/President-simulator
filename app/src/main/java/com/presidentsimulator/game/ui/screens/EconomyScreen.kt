@@ -1,9 +1,10 @@
 package com.presidentsimulator.game.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,8 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -44,11 +43,13 @@ import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.InfrastructureType
-import com.presidentsimulator.game.ui.components.HeroStat
 import com.presidentsimulator.game.ui.components.NssAlertBanner
 import com.presidentsimulator.game.ui.components.NssCard
-import com.presidentsimulator.game.ui.components.NssHeroBanner
-import com.presidentsimulator.game.ui.components.NssSectionHead
+import com.presidentsimulator.game.ui.components.NssCompactKpi
+import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.components.NssProgressBar
+import com.presidentsimulator.game.ui.components.NssSectorCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.formatMa2Money
 import com.presidentsimulator.game.ui.theme.GameIcons
@@ -61,11 +62,21 @@ import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
+import com.presidentsimulator.game.ui.theme.NssSecondary
 import com.presidentsimulator.game.ui.theme.StarkWhite
 import com.presidentsimulator.game.viewmodel.AnalyticsSaveViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toResourceString
 import kotlin.math.roundToInt
+
+private data class SectorModel(
+    val name: String,
+    val gdpShare: Float,
+    val employment: Float,
+    val growth: Float,
+    val level: Int,
+    val gradient: List<Color>,
+)
 
 private data class InfraRowModel(
     val type: InfrastructureType,
@@ -79,31 +90,29 @@ fun EconomyScreen(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf("POLICY") }
-    val tabs = listOf("POLICY", "INFRASTRUCTURE", "RESOURCES")
+    var selectedTab by remember { mutableStateOf("SECTORS") }
+    val tabs = listOf("SECTORS", "POLICY", "BUDGET", "TRADE")
     val gdp = remember(state) { AnalyticsSaveViewModel().calculateGDP(state) }
     val tradeBalance = state.economy.effectiveExports - state.economy.effectiveImports
+    val sectors = remember(state) { buildSectors(state, gdp) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(NssBackground),
     ) {
-        NssHeroBanner(
+        NssMinistryBanner(
             ministryLabel = "ECONOMY",
-            stats = listOf(
-                HeroStat("Total GDP", formatMa2Money(gdp), true),
-                HeroStat("Tax Rate", "${(state.economy.taxRate * 100).roundToInt()}%", null),
-                HeroStat("Trade Bal.", formatMa2Money(tradeBalance), tradeBalance >= 0),
-                HeroStat("Net / mo", formatMa2Money(state.netIncome), state.netIncome >= 0),
+            statPills = listOf(
+                "GDP ${formatMa2Money(gdp)}",
+                "Growth +${(state.netIncome.coerceAtLeast(0) * 100 / gdp.coerceAtLeast(1)).coerceAtMost(99)}%",
+                "Trade ${if (tradeBalance >= 0) "+" else ""}${formatMa2Money(tradeBalance)}",
+                "Tax ${(state.economy.taxRate * 100).roundToInt()}%",
             ),
+            gradientColors = NssGradients.Economy,
         )
 
-        NssTabBar(
-            tabs = tabs,
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
-        )
+        NssTabBar(tabs = tabs, selectedTab = selectedTab, onTabSelected = { selectedTab = it })
 
         Column(
             modifier = Modifier
@@ -113,306 +122,184 @@ fun EconomyScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (selectedTab) {
-                "POLICY" -> TaxesTab(state = state, viewModel = viewModel)
-                "INFRASTRUCTURE" -> InfrastructureTab(state = state, viewModel = viewModel)
-                else -> ResourcesTab(state = state)
+                "SECTORS" -> SectorsTab(state = state, gdp = gdp, sectors = sectors)
+                "POLICY" -> PolicyTab(state = state, viewModel = viewModel)
+                "BUDGET" -> BudgetTab(state = state)
+                else -> TradeTab(state = state)
             }
         }
     }
 }
 
 @Composable
-private fun TaxesTab(
-    state: GameState,
-    viewModel: GameViewModel,
-) {
+private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        NssCompactKpi("Total GDP", formatMa2Money(gdp), "▲ YOY", true, Modifier.weight(1f))
+        NssCompactKpi("Net / mo", formatMa2Money(state.netIncome), if (state.netIncome >= 0) "▲ surplus" else "▼ deficit", state.netIncome >= 0, Modifier.weight(1f))
+        NssCompactKpi("Factories", state.economy.factories.toString(), "Industrial base", true, Modifier.weight(1f))
+        NssCompactKpi("Approval", "${state.vitals.approval.roundToInt()}%", "Public support", state.vitals.approval >= 50f, Modifier.weight(1f))
+    }
+
+    sectors.chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { sector ->
+                NssSectorCard(
+                    name = sector.name,
+                    gdpShare = sector.gdpShare,
+                    employment = sector.employment,
+                    growth = sector.growth,
+                    level = sector.level,
+                    headerGradient = sector.gradient,
+                    onInvest = { },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun PolicyTab(state: GameState, viewModel: GameViewModel) {
     val economy = state.economy
     val population = state.vitals.population
-    var draftTaxRate by remember(economy.taxRate) {
-        mutableFloatStateOf(economy.taxRate.coerceIn(0f, 0.50f))
-    }
+    var draftTaxRate by remember(economy.taxRate) { mutableFloatStateOf(economy.taxRate.coerceIn(0f, 0.50f)) }
     val currentRevenue = economy.taxRevenue(population)
     val projectedRevenue = viewModel.projectTaxRevenue(draftTaxRate)
     val projectedChange = projectedRevenue - currentRevenue
-    val changePrefix = if (projectedChange >= 0L) "+" else ""
 
-    NssSectionHead(
-        title = "Economic Policy Controls",
-        subtitle = "Changes take effect at start of next month",
+    val policies = listOf(
+        "TAX RATE" to draftTaxRate,
     )
 
-    NssCard {
-        Text(
-            text = "INCOME TAX",
-            style = MaterialTheme.typography.labelLarge,
-            color = NssMutedForeground,
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Higher tax → more revenue, lower growth",
-                style = MaterialTheme.typography.bodySmall,
-                color = NssMutedForeground,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "${(draftTaxRate * 100).roundToInt()}%",
-                color = NssPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Slider(
-            value = draftTaxRate,
-            onValueChange = { draftTaxRate = it },
-            onValueChangeFinished = { viewModel.adjustTaxes(draftTaxRate) },
-            valueRange = 0f..0.50f,
-            steps = 9,
-            colors = SliderDefaults.colors(
-                thumbColor = NssPrimary,
-                activeTrackColor = NssPrimary,
-                inactiveTrackColor = NssBorder,
-            ),
-        )
-        Text(
-            text = "Current Revenue: ${formatMa2Money(currentRevenue)} | " +
-                "Projected Change: $changePrefix${formatMa2Money(projectedChange)}",
-            style = MaterialTheme.typography.bodySmall,
-            color = if (projectedChange >= 0L) NssEmerald else NssRed,
-        )
-    }
-
-    NssCard {
-        LedgerLine("Taxes", formatMa2Money(economy.taxRevenue(population)), NssEmerald)
-        LedgerLine("Exports", formatMa2Money(economy.effectiveExports), NssEmerald)
-        LedgerLine("Goods sales", formatMa2Money(state.production.lastGoodsRevenue), NssEmerald)
-        LedgerLine("Imports", "-${formatMa2Money(economy.effectiveImports)}", NssMutedForeground)
-        LedgerLine("Upkeep", "-${formatMa2Money(economy.upkeep)}", NssMutedForeground)
-        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
-        LedgerLine(
-            "Net / month",
-            formatMa2Money(state.netIncome),
-            if (state.netIncome >= 0) NssEmerald else NssRed,
-            bold = true,
-        )
-    }
-
-    NssAlertBanner(
-        message = "Pending tax changes commit at start of next month · review before confirming",
-    )
-}
-
-@Composable
-private fun InfrastructureTab(
-    state: GameState,
-    viewModel: GameViewModel,
-) {
-    val context = LocalContext.current
-    val audio = remember(context) { GameAudioManager.getInstance(context) }
-    val economy = state.economy
-    val production = state.production
-
-    val rows = listOf(
-        InfraRowModel(InfrastructureType.FACTORY, economy.factories, "+${formatMa2Money(economy.factories * 120_000_000L)}/mo"),
-        InfraRowModel(InfrastructureType.FARM, economy.farms, "+${economy.farms * 180} food/mo"),
-        InfraRowModel(InfrastructureType.POWER_PLANT, production.powerPlants, "+${production.powerPlants * 120} energy/mo"),
-        InfraRowModel(InfrastructureType.HOUSING, economy.housing, "Cap ${economy.housing * 1_500_000}"),
-        InfraRowModel(InfrastructureType.MINE, production.mines, "+${production.mines * 90} mat/mo"),
-    )
-
-    var selectedAmounts by remember {
-        mutableStateOf(rows.associate { it.type to 1 })
-    }
-
-    NssSectionHead(
-        title = "Infrastructure Procurement",
-        subtitle = "Bulk build controls · 1x | 10x | Max",
-    )
-
-    rows.forEach { row ->
-        val selected = selectedAmounts[row.type] ?: 1
-        val maxAffordable = viewModel.maxAffordable(row.type)
-        InfrastructureLedgerRow(
-            icon = GameIcons.forInfrastructure(row.type),
-            name = row.type.displayName,
-            owned = row.owned,
-            outputLabel = row.outputLabel,
-            unitCost = row.type.unitCost,
-            selectedAmount = selected,
-            maxAffordable = maxAffordable,
-            onAmountSelected = { amount ->
-                selectedAmounts = selectedAmounts.toMutableMap().apply { put(row.type, amount) }
-            },
-            onBuild = { amount ->
-                when (row.type) {
-                    InfrastructureType.FACTORY -> viewModel.buildFactory(amount)
-                    InfrastructureType.FARM -> viewModel.buildFarm(amount)
-                    InfrastructureType.HOUSING -> viewModel.buildHousing(amount)
-                    InfrastructureType.POWER_PLANT -> viewModel.buildPowerPlant(amount)
-                    InfrastructureType.MINE -> viewModel.buildMine(amount)
-                }
-                audio.playBuildSuccess()
-                selectedAmounts = selectedAmounts.toMutableMap().apply { put(row.type, 1) }
-            },
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun InfrastructureLedgerRow(
-    icon: ImageVector,
-    name: String,
-    owned: Int,
-    outputLabel: String,
-    unitCost: Long,
-    selectedAmount: Int,
-    maxAffordable: Int,
-    onAmountSelected: (Int) -> Unit,
-    onBuild: (Int) -> Unit,
-) {
-    val presets = listOf(1, 10)
-    val amount = selectedAmount.coerceIn(0, maxAffordable.coerceAtLeast(0))
-    val totalCost = unitCost * amount
-    val canBuild = amount > 0
-
-    NssCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = NssPrimary,
-                modifier = Modifier.size(28.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, color = NssForeground, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Text("Owned: $owned", color = NssMutedForeground, fontSize = 11.sp)
-                Text(outputLabel, color = NssEmerald, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "Cost: ${formatMa2Money(if (canBuild) totalCost else unitCost)}",
-                    color = NssAccent,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    presets.forEach { preset ->
-                        FilterChip(
-                            selected = selectedAmount == preset,
-                            onClick = { if (maxAffordable >= preset) onAmountSelected(preset) },
-                            enabled = maxAffordable >= preset,
-                            label = { Text("${preset}x", fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NssPrimary,
-                                selectedLabelColor = StarkWhite,
-                            ),
-                        )
+    policies.chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (key, _) ->
+                NssCard(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(key, color = NssForeground, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("${(draftTaxRate * 100).roundToInt()}%", color = NssPrimary, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    FilterChip(
-                        selected = selectedAmount == maxAffordable &&
-                            maxAffordable > 0 &&
-                            selectedAmount !in presets,
-                        onClick = { if (maxAffordable > 0) onAmountSelected(maxAffordable) },
-                        enabled = maxAffordable > 0,
-                        label = { Text("Max", fontSize = 11.sp) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NssPrimary,
-                            selectedLabelColor = StarkWhite,
-                        ),
+                    Slider(
+                        value = draftTaxRate,
+                        onValueChange = { draftTaxRate = it },
+                        onValueChangeFinished = { viewModel.adjustTaxes(draftTaxRate) },
+                        valueRange = 0f..0.50f,
+                        steps = 9,
+                        colors = SliderDefaults.colors(thumbColor = NssPrimary, activeTrackColor = NssPrimary, inactiveTrackColor = NssBorder),
+                    )
+                    NssProgressBar(percent = draftTaxRate * 200f, color = NssPrimary, thick = true)
+                }
+            }
+        }
+    }
+
+    NssCard {
+        LedgerLine("Current Revenue", formatMa2Money(currentRevenue), NssEmerald)
+        LedgerLine("Projected Change", "${if (projectedChange >= 0) "+" else ""}${formatMa2Money(projectedChange)}", if (projectedChange >= 0) NssEmerald else NssRed)
+        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
+        LedgerLine("Net / month", formatMa2Money(state.netIncome), if (state.netIncome >= 0) NssEmerald else NssRed, bold = true)
+    }
+
+    NssAlertBanner("Pending changes commit at start of next month")
+}
+
+@Composable
+private fun BudgetTab(state: GameState) {
+    val budgetLines = listOf(
+        Triple("Social Services", state.society.totalMinistryUpkeep, NssEmerald),
+        Triple("Defense", state.military.monthlyUpkeep, NssPrimary),
+        Triple("Security", state.internalSecurity.monthlyUpkeep, Color(0xFFA78BFA)),
+        Triple("Legal / Admin", state.legal.totalUpkeep, Color(0xFF818CF8)),
+        Triple("Infrastructure", state.economy.upkeep, Color(0xFFFBBF24)),
+    )
+    val total = budgetLines.sumOf { it.second }.coerceAtLeast(1L)
+
+    budgetLines.forEach { (dept, spent, color) ->
+        val pct = (spent.toFloat() / total * 100f).coerceIn(0f, 100f)
+        NssCard {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(modifier = Modifier.width(4.dp).height(48.dp).background(color))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(dept, color = NssForeground, fontWeight = FontWeight.Bold)
+                        Text("${pct.roundToInt()}% of budget", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    NssProgressBar(percent = pct, color = color, thick = true)
+                    Text(
+                        text = "Spent: ${formatMa2Money(spent)}/mo",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NssMutedForeground,
+                        modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = { onBuild(amount) },
-                    enabled = canBuild,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = NssAccent,
-                        contentColor = NssBackground,
-                    ),
-                ) {
-                    Text("BUILD", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
             }
         }
     }
 }
 
 @Composable
-private fun ResourcesTab(state: GameState) {
-    val production = state.production
-    NssSectionHead(title = "Resource Balance", subtitle = "Production vs consumption")
-    NssCard {
-        ResourceRow(GameIcons.ResourceEnergy, "Energy", production.energy, production.lastEnergyProduced, production.lastEnergyConsumed)
-        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
-        ResourceRow(GameIcons.ResourceFood, "Food", production.food, production.lastFoodProduced, production.lastFoodConsumed)
-        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
-        ResourceRow(GameIcons.ResourceMaterials, "Materials", production.materials, production.lastMaterialsProduced, production.lastMaterialsConsumed)
-        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
-        ResourceRow(GameIcons.ResourceConsumerGoods, "Goods", production.goods, production.lastGoodsProduced, production.lastGoodsSold)
-    }
-}
-
-@Composable
-private fun ResourceRow(
-    icon: ImageVector,
-    name: String,
-    stock: Long,
-    produced: Long,
-    consumed: Long,
-) {
-    val surplus = produced - consumed
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = NssPrimary, modifier = Modifier.size(28.dp))
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(name, color = NssForeground, fontWeight = FontWeight.Bold)
-            Text("Stock: ${stock.toResourceString()}", color = NssMutedForeground, fontSize = 11.sp)
+private fun TradeTab(state: GameState) {
+    state.diplomacy.rivals.filter { it.hasTradeTreaty || it.relationshipScore >= 40 }.take(6).chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { rival ->
+                val exports = if (rival.hasTradeTreaty) 30_000_000_000L else 10_000_000_000L
+                val imports = 15_000_000_000L
+                val balance = exports - imports
+                NssCard(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (rival.hasTradeTreaty) "PARTNER" else "NEUTRAL",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NssPrimary,
+                        )
+                    }
+                    Text(
+                        text = "${if (balance >= 0) "+" else ""}${formatMa2Money(balance)}",
+                        color = if (balance >= 0) NssEmerald else NssRed,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                    Text("TRADE BALANCE", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
+                    Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column {
+                            Text("EXPORTS", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
+                            Text(formatMa2Money(exports), color = NssEmerald, fontWeight = FontWeight.SemiBold)
+                        }
+                        Column {
+                            Text("IMPORTS", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
+                            Text(formatMa2Money(imports), color = NssRed, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
         }
-        Text(
-            "+${produced.toResourceString()} / -${consumed.toResourceString()}",
-            color = if (surplus >= 0) NssEmerald else NssRed,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp,
-        )
     }
 }
 
+private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
+    val economy = state.economy
+    val production = state.production
+    val total = (economy.factories + economy.farms + production.powerPlants + production.mines + 1).toFloat()
+    return listOf(
+        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, NssGradients.Emerald),
+        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), NssGradients.Sky),
+        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, NssGradients.Indigo),
+        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), NssGradients.Violet),
+        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), NssGradients.Amber),
+        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), NssGradients.Orange),
+        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, NssGradients.Red),
+    )
+}
+
 @Composable
-private fun LedgerLine(
-    label: String,
-    value: String,
-    color: Color,
-    bold: Boolean = false,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            label,
-            color = NssForeground,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
-        )
-        Text(
-            value,
-            color = color,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-        )
+private fun LedgerLine(label: String, value: String, color: Color, bold: Boolean = false) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = NssForeground, fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold)
+        Text(value, color = color, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
 }
