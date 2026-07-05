@@ -33,22 +33,22 @@ import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.ui.components.ActiveWarPanel
 import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCard
+import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssMinistryBanner
 import com.presidentsimulator.game.ui.components.NssNationCard
 import com.presidentsimulator.game.ui.components.NssNationColors
 import com.presidentsimulator.game.ui.components.NssProgressBar
+import com.presidentsimulator.game.ui.components.NssStripPhotoCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.prgColor
 import com.presidentsimulator.game.ui.components.relationBarColor
 import com.presidentsimulator.game.ui.components.relationTextColor
-import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
-import com.presidentsimulator.game.ui.theme.StarkWhite
 import com.presidentsimulator.game.viewmodel.DiplomacyViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.GovernanceViewModel
@@ -69,10 +69,11 @@ fun DiplomacyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         NssMinistryBanner(
             ministryLabel = "FOREIGN AFFAIRS",
+            imageUrl = NssCardImages.BANNER_FOREIGN,
             statPills = listOf(
                 "Allies: ${state.diplomacy.rivals.count { it.relationshipScore >= 70 }}",
                 "Treaties: ${state.diplomacy.rivals.count { it.hasTradeTreaty || it.hasNonAggressionPact }}",
@@ -147,7 +148,11 @@ fun DiplomacyScreen(
                     state.diplomacy.rivals.filter { it.hasTradeTreaty || it.hasNonAggressionPact }.chunked(2).forEach { row ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { rival ->
-                                NssCard(modifier = Modifier.weight(1f)) {
+                                NssStripPhotoCard(
+                                    imageUrl = NssCardImages.BANNER_FOREIGN,
+                                    fallbackGradient = NssGradients.Foreign,
+                                    modifier = Modifier.weight(1f),
+                                ) {
                                     Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
                                     Text(
                                         if (rival.hasTradeTreaty) "Free Trade Agreement" else "Non-Aggression Pact",
@@ -169,7 +174,10 @@ fun DiplomacyScreen(
                 "NEGOTIATIONS" -> {
                     state.diplomacy.rivals.filter { it.relationshipScore in 20..80 }.forEach { rival ->
                         val progress = rival.relationshipScore
-                        NssCard {
+                        NssStripPhotoCard(
+                            imageUrl = NssCardImages.BANNER_FOREIGN,
+                            fallbackGradient = NssGradients.Foreign,
+                        ) {
                             Text(
                                 text = "${rival.name} — Diplomatic Channel",
                                 color = NssForeground,
@@ -225,7 +233,10 @@ private fun RivalActionPanel(
                         onClick = onDeclareWar,
                         enabled = canWar,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = NssRed, contentColor = StarkWhite),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NssRed,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                     ) {
                         Text(if (canWar) "Declare War" else "Declare War (blocked)")
                     }
@@ -261,6 +272,6 @@ private fun rivalHeaderColor(rival: RivalNation): Color = when {
     rival.relationshipScore >= 80 -> NssNationColors.Ally
     rival.relationshipScore >= 60 -> NssNationColors.Partner
     rival.relationshipScore >= 40 -> NssNationColors.Neutral
-    rival.relationshipScore >= 20 -> Color(0xFF451A03)
+    rival.relationshipScore >= 20 -> NssNationColors.Rival
     else -> NssNationColors.Hostile
 }

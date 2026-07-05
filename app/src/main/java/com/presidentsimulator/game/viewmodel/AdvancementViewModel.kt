@@ -1,6 +1,7 @@
 package com.presidentsimulator.game.viewmodel
 
 import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.data.ResearchState
 import com.presidentsimulator.game.data.SocietyMinistry
 import com.presidentsimulator.game.data.SocietyState
 import com.presidentsimulator.game.data.StateReligion
@@ -29,8 +30,10 @@ class AdvancementViewModel {
         val religion = society.stateReligion
 
         val scienceGenerated = calculateScienceGenerated(state)
-        val researchAfterScience = research.copy(
-            sciencePoints = research.sciencePoints + scienceGenerated,
+        val researchAfterScience = advanceActiveResearch(
+            state = state,
+            research = research,
+            scienceGenerated = scienceGenerated,
         )
 
         var budget = state.vitals.budget
@@ -98,7 +101,62 @@ class AdvancementViewModel {
     }
 
     /**
-     * Unlocks [techId] when science points and prerequisites are sufficient.
+     * Begins researching [techId] when no other project is active.
+     */
+    fun startResearch(state: GameState, techId: String): GameState {
+        if (state.gameOver.isGameOver) return state
+        val tech = TechCatalog.byId(techId) ?: return state
+        if (state.research.isUnlocked(techId)) return state
+        if (!state.research.prerequisitesMet(tech)) return state
+        if (state.research.activeTechId != null) return state
+        if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return state
+
+        return state.copy(
+            research = state.research.copy(
+                activeTechId = techId,
+                researchProgress = 0L,
+                extraFundingTier = 0,
+            ),
+        )
+    }
+
+    /**
+     * Spends treasury to accelerate the active research project.
+     */
+    fun allocateExtraResearchFunding(state: GameState): GameState {
+        if (state.gameOver.isGameOver) return state
+        val research = state.research
+        val activeId = research.activeTechId ?: return state
+        if (research.extraFundingTier >= ResearchState.MAX_EXTRA_FUNDING_TIER) return state
+        if (state.vitals.budget < EXTRA_RESEARCH_FUNDING_COST) return state
+
+        val tech = TechCatalog.byId(activeId) ?: return state
+        val boost = (tech.scienceCost * EXTRA_FUNDING_PROGRESS_SHARE).roundToLong()
+        val newProgress = research.researchProgress + boost
+        val completed = newProgress >= tech.scienceCost
+
+        return if (completed) {
+            val updated = completeResearch(state, activeId, state.research.sciencePoints)
+            updated.copy(
+                vitals = updated.vitals.copy(
+                    budget = updated.vitals.budget - EXTRA_RESEARCH_FUNDING_COST,
+                ),
+            )
+        } else {
+            state.copy(
+                vitals = state.vitals.copy(
+                    budget = state.vitals.budget - EXTRA_RESEARCH_FUNDING_COST,
+                ),
+                research = research.copy(
+                    researchProgress = newProgress,
+                    extraFundingTier = research.extraFundingTier + 1,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Unlocks [techId] instantly when science points and prerequisites are sufficient.
      */
     fun unlockTechnology(state: GameState, techId: String): GameState {
         if (state.gameOver.isGameOver) return state
@@ -106,12 +164,52 @@ class AdvancementViewModel {
         if (state.research.isUnlocked(techId)) return state
         if (!state.research.prerequisitesMet(tech)) return state
         if (state.research.sciencePoints < tech.scienceCost) return state
-        // UN nuclear embargo blocks new nuclear programs.
         if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return state
 
+        return completeResearch(
+            state = state,
+            techId = techId,
+            newSciencePoints = (state.research.sciencePoints - tech.scienceCost).coerceAtLeast(0L),
+        )
+    }
+
+    private fun advanceActiveResearch(
+        state: GameState,
+        research: ResearchState,
+        scienceGenerated: Long,
+    ): ResearchState {
+        val activeId = research.activeTechId
+        if (activeId == null) {
+            return research.copy(sciencePoints = research.sciencePoints + scienceGenerated)
+        }
+
+        val tech = TechCatalog.byId(activeId) ?: return research.copy(activeTechId = null)
+        val gained = (scienceGenerated * research.fundingMultiplier).roundToLong().coerceAtLeast(0L)
+        val newProgress = research.researchProgress + gained
+
+        return if (newProgress >= tech.scienceCost) {
+            completeResearch(
+                state = state,
+                techId = activeId,
+                newSciencePoints = (newProgress - tech.scienceCost).coerceAtLeast(0L),
+            ).research
+        } else {
+            research.copy(researchProgress = newProgress)
+        }
+    }
+
+    private fun completeResearch(
+        state: GameState,
+        techId: String,
+        newSciencePoints: Long,
+    ): GameState {
+        val tech = TechCatalog.byId(techId) ?: return state
         return state.copy(
             research = state.research.copy(
-                sciencePoints = state.research.sciencePoints - tech.scienceCost,
+                activeTechId = null,
+                researchProgress = 0L,
+                extraFundingTier = 0,
+                sciencePoints = newSciencePoints,
                 unlockedTechIds = state.research.unlockedTechIds + techId,
             ),
             vitals = state.vitals.copy(
@@ -244,5 +342,17 @@ class AdvancementViewModel {
             if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return false
             return state.research.sciencePoints >= tech.scienceCost
         }
+
+        fun canStartResearch(state: GameState, techId: String): Boolean {
+            val tech = TechCatalog.byId(techId) ?: return false
+            if (state.research.isUnlocked(techId)) return false
+            if (!state.research.prerequisitesMet(tech)) return false
+            if (state.research.activeTechId != null) return false
+            if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return false
+            return true
+        }
+
+        const val EXTRA_RESEARCH_FUNDING_COST = 3_000_000_000L
+        const val EXTRA_FUNDING_PROGRESS_SHARE = 0.15f
     }
 }

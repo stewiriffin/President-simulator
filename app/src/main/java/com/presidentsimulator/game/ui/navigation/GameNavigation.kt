@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,8 +43,6 @@ import com.presidentsimulator.game.ui.screens.MilitaryScreen
 import com.presidentsimulator.game.ui.screens.ScienceScreen
 import com.presidentsimulator.game.ui.screens.SecretServiceScreen
 import com.presidentsimulator.game.ui.screens.SettingsAudioScreen
-import com.presidentsimulator.game.ui.theme.NssBackground
-import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.viewmodel.GameViewModel
 
 sealed class GameDestination(val route: String, val title: String) {
@@ -110,7 +109,7 @@ fun GameNavigation(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         GlobalHud(
             state = state,
@@ -128,7 +127,7 @@ fun GameNavigation(
             },
         )
 
-        HorizontalDivider(color = NssBorder)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
         Row(modifier = Modifier.fillMaxSize()) {
             MinistrySideNav(
@@ -148,7 +147,7 @@ fun GameNavigation(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(1.dp)
-                    .background(NssBorder),
+                    .background(MaterialTheme.colorScheme.outline),
             )
 
             NavHost(
@@ -174,10 +173,10 @@ fun GameNavigation(
                     SecretServiceScreen(state = state, viewModel = viewModel)
                 }
                 composable(GameDestination.Science.route) {
-                    ScienceScreen(state = state, viewModel = viewModel)
+                    ScienceScreen(viewModel = viewModel)
                 }
                 composable(GameDestination.LawsSociety.route) {
-                    LawsSocietyScreen(state = state, viewModel = viewModel)
+                    LawsSocietyScreen(viewModel = viewModel)
                 }
                 composable(GameDestination.Governance.route) {
                     GovernanceUNScreen(state = state, viewModel = viewModel)

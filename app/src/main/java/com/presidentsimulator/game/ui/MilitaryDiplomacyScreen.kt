@@ -38,6 +38,9 @@ import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.TreatyType
 import com.presidentsimulator.game.data.WarState
+import com.presidentsimulator.game.ui.theme.DeficitRed
+import com.presidentsimulator.game.ui.theme.ProfitGreen
+import com.presidentsimulator.game.ui.theme.WarningOrange
 import com.presidentsimulator.game.viewmodel.DiplomacyViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.progressFraction
@@ -450,9 +453,9 @@ private fun RivalNationCard(
 @Composable
 private fun StanceBadge(stance: DiplomaticStance) {
     val color = when (stance) {
-        DiplomaticStance.FRIENDLY -> Color(0xFF2A9D8F)
-        DiplomaticStance.NEUTRAL -> Color(0xFFE9C46A)
-        DiplomaticStance.HOSTILE -> Color(0xFFE76F51)
+        DiplomaticStance.FRIENDLY -> ProfitGreen
+        DiplomaticStance.NEUTRAL -> WarningOrange
+        DiplomaticStance.HOSTILE -> DeficitRed
     }
     Box(
         modifier = Modifier

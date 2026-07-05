@@ -1,6 +1,7 @@
 package com.presidentsimulator.game.data
 
 import kotlinx.serialization.Serializable
+import kotlin.math.roundToLong
 
 /**
  * Social ministry vitals and funding allocations (0–1 funding sliders).
@@ -140,6 +141,9 @@ data class Technology(
 data class ResearchState(
     val sciencePoints: Long = 120L,
     val unlockedTechIds: List<String> = emptyList(),
+    val activeTechId: String? = null,
+    val researchProgress: Long = 0L,
+    val extraFundingTier: Int = 0,
 ) {
     val unlockedTechs: List<Technology>
         get() = unlockedTechIds.mapNotNull { TechCatalog.byId(it) }
@@ -149,10 +153,34 @@ data class ResearchState(
             acc.combine(tech.effect)
         }
 
+    val activeTechnology: Technology?
+        get() = activeTechId?.let { TechCatalog.byId(it) }
+
+    val fundingMultiplier: Float
+        get() = 1f + extraFundingTier * EXTRA_FUNDING_BONUS_PER_TIER
+
     fun isUnlocked(techId: String): Boolean = techId in unlockedTechIds
 
     fun prerequisitesMet(tech: Technology): Boolean =
         tech.prerequisiteIds.all { it in unlockedTechIds }
+
+    fun progressPercent(): Float {
+        val tech = activeTechnology ?: return 0f
+        if (tech.scienceCost <= 0L) return 100f
+        return (researchProgress.toFloat() / tech.scienceCost.toFloat() * 100f).coerceIn(0f, 100f)
+    }
+
+    fun daysRemaining(sciencePerMonth: Long): Int {
+        val tech = activeTechnology ?: return 0
+        val remaining = (tech.scienceCost - researchProgress).coerceAtLeast(0L)
+        val monthlyRate = (sciencePerMonth * fundingMultiplier).roundToLong().coerceAtLeast(1L)
+        return ((remaining * 30.0) / monthlyRate).toInt().coerceAtLeast(0)
+    }
+
+    companion object {
+        const val EXTRA_FUNDING_BONUS_PER_TIER = 0.25f
+        const val MAX_EXTRA_FUNDING_TIER = 3
+    }
 }
 
 /**
@@ -161,6 +189,18 @@ data class ResearchState(
 object TechCatalog {
 
     val all: List<Technology> = listOf(
+        Technology(
+            id = "advanced_robotics",
+            name = "Advanced Robotics",
+            scienceCost = 260L,
+            category = TechCategory.ECONOMY,
+            effect = TechEffectModifier(
+                factoryOutputMultiplier = 1.18f,
+                productionMultiplier = 1.06f,
+                description = "Increases factory output by 18% and general production by 6%.",
+            ),
+            prerequisiteIds = listOf("advanced_automation"),
+        ),
         Technology(
             id = "advanced_automation",
             name = "Advanced Automation",

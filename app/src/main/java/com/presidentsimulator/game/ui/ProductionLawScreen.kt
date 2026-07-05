@@ -41,6 +41,9 @@ import com.presidentsimulator.game.data.LawCatalog
 import com.presidentsimulator.game.data.LawCategory
 import com.presidentsimulator.game.data.ResourceFlow
 import com.presidentsimulator.game.data.ResourceType
+import com.presidentsimulator.game.ui.theme.NssEmerald
+import com.presidentsimulator.game.ui.theme.ProfitGreen
+import com.presidentsimulator.game.ui.theme.StarkWhite
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.ProductionLawViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
@@ -419,7 +422,7 @@ private fun LawCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isActive) {
-                Color(0xFF1B4332).copy(alpha = 0.25f)
+                NssEmerald.copy(alpha = 0.15f)
             } else {
                 MaterialTheme.colorScheme.surface
             },
@@ -487,14 +490,14 @@ private fun ActiveBadge() {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color(0xFF2A9D8F))
+            .background(ProfitGreen)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
             text = "Active",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = StarkWhite,
         )
     }
 }

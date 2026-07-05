@@ -1,5 +1,6 @@
 package com.presidentsimulator.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,11 @@ import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.PLAYER_COUNTRY_ID
 import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.UNResolution
+import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.theme.ProfitGreen
+import com.presidentsimulator.game.ui.theme.DeficitRed
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.GovernanceViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
@@ -61,19 +67,21 @@ fun GovernanceUNScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var showCreateAlliance by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = "Global Summit",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-            Text(
-                text = "UN Diplomatic Influence: ${state.governance.diplomaticInfluence}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
+            NssMinistryBanner(
+                ministryLabel = "UNITED NATIONS",
+                imageUrl = NssCardImages.BANNER_FOREIGN,
+                statPills = listOf(
+                    "Influence: ${state.governance.diplomaticInfluence}",
+                    "Alliances: ${state.governance.activeAlliances.size}",
+                    "Resolution: ${if (state.governance.activeResolution != null) "ACTIVE" else "NONE"}",
+                ),
+                gradientColors = NssGradients.Sky,
             )
 
             TabRow(selectedTabIndex = selectedTab) {
@@ -326,7 +334,7 @@ private fun LiveVoteTracker(resolution: UNResolution) {
             ) {
                 Text(
                     text = "For: $forCount",
-                    color = Color(0xFF2A9D8F),
+                    color = ProfitGreen,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
@@ -341,8 +349,8 @@ private fun LiveVoteTracker(resolution: UNResolution) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(12.dp),
-                color = Color(0xFF2A9D8F),
-                trackColor = Color(0xFFE76F51),
+                color = ProfitGreen,
+                trackColor = DeficitRed,
             )
             Text(
                 text = "Support share: ${(forFraction * 100f).roundToInt()}%",
@@ -383,7 +391,7 @@ private fun BribeNationRow(
                     enabled = canAfford,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2A9D8F),
+                        containerColor = ProfitGreen,
                     ),
                 ) {
                     Text("Bribe For")

@@ -38,6 +38,7 @@ import com.presidentsimulator.game.ui.components.ActiveWarPanel
 import com.presidentsimulator.game.ui.components.NssAlertBanner
 import com.presidentsimulator.game.ui.components.NssBranchHeader
 import com.presidentsimulator.game.ui.components.NssCompactKpi
+import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssMinistryBanner
 import com.presidentsimulator.game.ui.components.NssRecruitCard
@@ -45,7 +46,7 @@ import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.NssUnitCard
 import com.presidentsimulator.game.ui.components.formatMa2Money
 import com.presidentsimulator.game.ui.theme.NssAccent
-import com.presidentsimulator.game.ui.theme.NssBackground
+import androidx.compose.material3.MaterialTheme
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssSky
@@ -61,6 +62,7 @@ private data class ForceUnit(
     val count: Int,
     val strength: Int,
     val status: String,
+    val imageUrl: String,
 )
 
 @Composable
@@ -79,10 +81,11 @@ fun MilitaryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         NssMinistryBanner(
             ministryLabel = "DEFENSE",
+            imageUrl = NssCardImages.BANNER_DEFENSE,
             statPills = listOf(
                 "Power: ${state.effectiveCombatStrength.roundToInt()} pts",
                 "Personnel: ${military.personnel.toArmyString()}",
@@ -126,19 +129,21 @@ fun MilitaryScreen(
 private fun ForcesTab(state: GameState) {
     val military = state.military
     val armyUnits = listOf(
-        ForceUnit("Infantry Corps", military.personnel.toInt().coerceAtMost(999), military.morale.roundToInt(), "COMBAT READY"),
-        ForceUnit("Armored Brigade", military.tanks, 88, "COMBAT READY"),
-        ForceUnit("Artillery Regiment", (military.tanks / 2).coerceAtLeast(1), 91, "TRAINING"),
+        ForceUnit("Infantry Corps", military.personnel.toInt().coerceAtMost(999), military.morale.roundToInt(), "COMBAT READY", NssCardImages.INFANTRY),
+        ForceUnit("Armored Brigade", military.tanks, 88, "COMBAT READY", NssCardImages.ARMORED),
+        ForceUnit("Artillery Regiment", (military.tanks / 2).coerceAtLeast(1), 91, "TRAINING", NssCardImages.ARTILLERY),
+        ForceUnit("Special Ops", (military.personnel / 50).coerceAtLeast(1).toInt(), 96, "ACTIVE OPS", NssCardImages.SPECIAL_OPS),
     )
     val navyUnits = listOf(
-        ForceUnit("Destroyer", military.ships.coerceAtMost(20), 82, "PATROL"),
-        ForceUnit("Frigate", (military.ships * 1.5).roundToInt(), 79, "PATROL"),
-        ForceUnit("Submarine", military.ships.coerceAtMost(8), 95, "COMBAT READY"),
+        ForceUnit("Destroyer", military.ships.coerceAtMost(20), 82, "PATROL", NssCardImages.DESTROYER),
+        ForceUnit("Frigate", (military.ships * 1.5).roundToInt(), 79, "PATROL", NssCardImages.FRIGATE),
+        ForceUnit("Submarine", military.ships.coerceAtMost(8), 95, "COMBAT READY", NssCardImages.SUBMARINE),
+        ForceUnit("Carrier Group", military.ships.coerceAtMost(2), 90, "DEPLOYED", NssCardImages.CARRIER),
     )
     val airUnits = listOf(
-        ForceUnit("Fighter Squadron", military.jets, 91, "COMBAT READY"),
-        ForceUnit("Bomber Wing", (military.jets / 3).coerceAtLeast(1), 76, "TRAINING"),
-        ForceUnit("Drone Fleet", (military.jets / 2).coerceAtLeast(1), 98, "ACTIVE OPS"),
+        ForceUnit("Fighter Squadron", military.jets, 91, "COMBAT READY", NssCardImages.FIGHTER),
+        ForceUnit("Bomber Wing", (military.jets / 3).coerceAtLeast(1), 76, "TRAINING", NssCardImages.BOMBER),
+        ForceUnit("Drone Fleet", (military.jets / 2).coerceAtLeast(1), 98, "ACTIVE OPS", NssCardImages.DRONE),
     )
 
     BranchSection("ARMY", armyUnits.sumOf { it.count }, NssEmerald, Icons.Default.Security, NssGradients.Emerald, armyUnits)
@@ -169,6 +174,7 @@ private fun BranchSection(
                         maintLabel = "$${"%.1f".format((unit.count * 0.2).coerceAtLeast(0.1))}B/yr",
                         headerGradient = gradient,
                         accentColor = accent,
+                        imageUrl = unit.imageUrl,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -224,6 +230,7 @@ private fun RecruitmentTab(
         quantity = personnelQty,
         headerGradient = NssGradients.Emerald,
         accentColor = NssEmerald,
+        imageUrl = NssCardImages.INFANTRY,
         onQuantityChange = { delta -> personnelQty = (personnelQty + delta).coerceAtLeast(0) },
         modifier = Modifier.fillMaxWidth(),
     )
@@ -242,6 +249,7 @@ private fun RecruitmentTab(
                     quantity = qty,
                     headerGradient = NssGradients.Sky,
                     accentColor = NssSky,
+                    imageUrl = hardwareImage(hardware),
                     onQuantityChange = { delta ->
                         hardwareQtys = hardwareQtys.toMutableMap().apply {
                             put(hardware, ((get(hardware) ?: 0) + delta).coerceAtLeast(0))
@@ -303,4 +311,11 @@ private fun LogisticsTab(state: GameState) {
     if (military.morale < 50f) {
         NssAlertBanner("MORALE BELOW OPERATIONAL THRESHOLD — INCREASE SALARY FUNDING")
     }
+}
+
+private fun hardwareImage(hardware: MilitaryHardware): String = when (hardware) {
+    MilitaryHardware.TANKS -> NssCardImages.ARMORED
+    MilitaryHardware.FIGHTER_JETS -> NssCardImages.FIGHTER
+    MilitaryHardware.NAVAL_SHIPS -> NssCardImages.DESTROYER
+    MilitaryHardware.NUCLEAR_ARSENAL -> NssCardImages.ARTILLERY
 }

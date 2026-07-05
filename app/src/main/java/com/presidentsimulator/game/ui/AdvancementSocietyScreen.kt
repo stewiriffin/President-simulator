@@ -1,5 +1,6 @@
 package com.presidentsimulator.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,10 @@ import com.presidentsimulator.game.data.StateReligion
 import com.presidentsimulator.game.data.TechCatalog
 import com.presidentsimulator.game.data.TechCategory
 import com.presidentsimulator.game.data.Technology
+import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.viewmodel.AdvancementViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
@@ -59,12 +64,27 @@ fun ScienceMinistryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .background(MaterialTheme.colorScheme.background),
     ) {
+        NssMinistryBanner(
+            ministryLabel = "SCIENCE",
+            imageUrl = NssCardImages.BANNER_SCIENCE,
+            statPills = listOf(
+                "Tech unlocked: ${research.unlockedTechIds.size}",
+                "Science/mo: +${sciencePerTick.toInt()}",
+                "Points: ${research.sciencePoints}",
+            ),
+            gradientColors = NssGradients.Violet,
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
         Text(
-            text = "Ministry of Science",
+            text = "Research Programs",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
@@ -127,6 +147,7 @@ fun ScienceMinistryScreen(
                     onUnlock = { viewModel.unlockTechnology(tech.id) },
                 )
             }
+        }
         }
     }
 }
@@ -342,7 +363,7 @@ private fun TechnologyCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                isUnlocked -> Color(0xFF1B4332).copy(alpha = 0.35f)
+                isUnlocked -> NssEmerald.copy(alpha = 0.15f)
                 prerequisitesMet -> MaterialTheme.colorScheme.surface
                 else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
             },

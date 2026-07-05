@@ -9,18 +9,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.ui.components.HeroStat
+import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssHeroBanner
 import com.presidentsimulator.game.ui.components.NssKpiCard
 import com.presidentsimulator.game.ui.components.NssSectionHead
 import com.presidentsimulator.game.ui.components.formatCompactMoney
 import com.presidentsimulator.game.ui.components.formatMa2Money
-import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.viewmodel.AnalyticsSaveViewModel
 import com.presidentsimulator.game.viewmodel.toApprovalString
 import com.presidentsimulator.game.viewmodel.toPopulationString
@@ -41,10 +42,11 @@ fun MainDashboardScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         NssHeroBanner(
             ministryLabel = "COMMAND CENTER",
+            imageUrl = NssCardImages.BANNER_COMMAND,
             stats = listOf(
                 HeroStat("Total GDP", formatCompactMoney(gdp), true),
                 HeroStat("Approval", state.vitals.approval.toApprovalString(), state.vitals.approval >= 50f),

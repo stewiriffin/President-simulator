@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,17 +53,18 @@ data class MinistryNavItem(
     val subtitle: String,
     val icon: ImageVector,
     val bannerGradient: List<Color>,
+    val bannerImageUrl: String,
 )
 
 val ministryNavItems = listOf(
-    MinistryNavItem(GameDestination.Economy, "Economy", "Finance & Trade", Icons.Default.AttachMoney, NssGradients.Economy),
-    MinistryNavItem(GameDestination.Military, "Defense", "Military & Arms", Icons.Default.Shield, NssGradients.Defense),
-    MinistryNavItem(GameDestination.Diplomacy, "Foreign Affairs", "Diplomacy", Icons.Default.Public, NssGradients.Foreign),
-    MinistryNavItem(GameDestination.LawsSociety, "Domestic Policy", "Internal Affairs", Icons.Default.Groups, NssGradients.Indigo),
-    MinistryNavItem(GameDestination.SecretService, "Intelligence", "Classified Ops", Icons.Default.Visibility, NssGradients.Violet),
-    MinistryNavItem(GameDestination.Science, "Science", "R&D Programs", Icons.Default.Science, NssGradients.Violet),
-    MinistryNavItem(GameDestination.Governance, "United Nations", "Global Governance", Icons.Default.Gavel, NssGradients.Sky),
-    MinistryNavItem(GameDestination.AudioSettings, "Settings", "System Config", Icons.Default.Settings, NssGradients.Neutral),
+    MinistryNavItem(GameDestination.Economy, "Economy", "Finance & Trade", Icons.Default.AttachMoney, NssGradients.Economy, NssCardImages.BANNER_ECONOMY),
+    MinistryNavItem(GameDestination.Military, "Defense", "Military & Arms", Icons.Default.Shield, NssGradients.Defense, NssCardImages.BANNER_DEFENSE),
+    MinistryNavItem(GameDestination.Diplomacy, "Foreign Affairs", "Diplomacy", Icons.Default.Public, NssGradients.Foreign, NssCardImages.BANNER_FOREIGN),
+    MinistryNavItem(GameDestination.LawsSociety, "Domestic Policy", "Internal Affairs", Icons.Default.Groups, NssGradients.Indigo, NssCardImages.BANNER_DOMESTIC),
+    MinistryNavItem(GameDestination.SecretService, "Intelligence", "Classified Ops", Icons.Default.Visibility, NssGradients.Violet, NssCardImages.BANNER_INTELLIGENCE),
+    MinistryNavItem(GameDestination.Science, "Science", "R&D Programs", Icons.Default.Science, NssGradients.Violet, NssCardImages.BANNER_SCIENCE),
+    MinistryNavItem(GameDestination.Governance, "United Nations", "Global Governance", Icons.Default.Gavel, NssGradients.Sky, NssCardImages.BANNER_FOREIGN),
+    MinistryNavItem(GameDestination.AudioSettings, "Settings", "System Config", Icons.Default.Settings, NssGradients.Neutral, NssCardImages.BANNER_COMMAND),
 )
 
 @Composable
@@ -102,6 +104,13 @@ fun MinistrySideNav(
                         .clickable { onNavigate(item.destination) },
                 ) {
                     if (selected) {
+                        NssPhotoHeader(
+                            imageUrl = item.bannerImageUrl,
+                            fallbackGradient = item.bannerGradient,
+                            modifier = Modifier.matchParentSize().alpha(0.1f),
+                            scrimLeftToRight = null,
+                            scrimTopToBottom = listOf(Color.Transparent, Color.Transparent),
+                        )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()

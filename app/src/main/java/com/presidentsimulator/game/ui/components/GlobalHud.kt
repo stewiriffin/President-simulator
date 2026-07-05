@@ -142,7 +142,7 @@ fun GlobalHud(
                     ) {
                         Text(
                             text = vital.value,
-                            color = if (vital.warn) Color(0xFFFCD34D) else NssForeground,
+                            color = if (vital.warn) NssAmber else NssForeground,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,

@@ -46,15 +46,16 @@ import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.ui.components.NssAlertBanner
 import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCompactKpi
+import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssMinistryBanner
 import com.presidentsimulator.game.ui.components.NssProgressBar
 import com.presidentsimulator.game.ui.components.NssSectorCard
+import com.presidentsimulator.game.ui.components.NssStripPhotoCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.formatMa2Money
 import com.presidentsimulator.game.ui.theme.GameIcons
 import com.presidentsimulator.game.ui.theme.NssAccent
-import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.ui.theme.NssCard
 import com.presidentsimulator.game.ui.theme.NssEmerald
@@ -63,7 +64,9 @@ import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.theme.NssSecondary
-import com.presidentsimulator.game.ui.theme.StarkWhite
+import com.presidentsimulator.game.ui.theme.NssViolet
+import com.presidentsimulator.game.ui.theme.NssIndigo
+import com.presidentsimulator.game.ui.theme.NssOrange
 import com.presidentsimulator.game.viewmodel.AnalyticsSaveViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toResourceString
@@ -76,6 +79,7 @@ private data class SectorModel(
     val growth: Float,
     val level: Int,
     val gradient: List<Color>,
+    val imageUrl: String,
 )
 
 private data class InfraRowModel(
@@ -99,10 +103,11 @@ fun EconomyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         NssMinistryBanner(
             ministryLabel = "ECONOMY",
+            imageUrl = NssCardImages.BANNER_ECONOMY,
             statPills = listOf(
                 "GDP ${formatMa2Money(gdp)}",
                 "Growth +${(state.netIncome.coerceAtLeast(0) * 100 / gdp.coerceAtLeast(1)).coerceAtMost(99)}%",
@@ -150,6 +155,7 @@ private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) 
                     growth = sector.growth,
                     level = sector.level,
                     headerGradient = sector.gradient,
+                    imageUrl = sector.imageUrl,
                     onInvest = { },
                     modifier = Modifier.weight(1f),
                 )
@@ -175,7 +181,11 @@ private fun PolicyTab(state: GameState, viewModel: GameViewModel) {
     policies.chunked(2).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             row.forEach { (key, _) ->
-                NssCard(modifier = Modifier.weight(1f)) {
+                NssStripPhotoCard(
+                    imageUrl = NssCardImages.BANNER_ECONOMY,
+                    fallbackGradient = NssGradients.Economy,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(key, color = NssForeground, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("${(draftTaxRate * 100).roundToInt()}%", color = NssPrimary, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
@@ -207,28 +217,31 @@ private fun PolicyTab(state: GameState, viewModel: GameViewModel) {
 @Composable
 private fun BudgetTab(state: GameState) {
     val budgetLines = listOf(
-        Triple("Social Services", state.society.totalMinistryUpkeep, NssEmerald),
-        Triple("Defense", state.military.monthlyUpkeep, NssPrimary),
-        Triple("Security", state.internalSecurity.monthlyUpkeep, Color(0xFFA78BFA)),
-        Triple("Legal / Admin", state.legal.totalUpkeep, Color(0xFF818CF8)),
-        Triple("Infrastructure", state.economy.upkeep, Color(0xFFFBBF24)),
+        BudgetLine("Social Services", state.society.totalMinistryUpkeep, NssEmerald, NssCardImages.SERVICES, NssGradients.Emerald),
+        BudgetLine("Defense", state.military.monthlyUpkeep, NssPrimary, NssCardImages.DEFENSE_IND, NssGradients.Defense),
+        BudgetLine("Security", state.internalSecurity.monthlyUpkeep, NssViolet, NssCardImages.BANNER_INTELLIGENCE, NssGradients.Violet),
+        BudgetLine("Legal / Admin", state.legal.totalUpkeep, NssIndigo, NssCardImages.BANNER_DOMESTIC, NssGradients.Indigo),
+        BudgetLine("Infrastructure", state.economy.upkeep, NssOrange, NssCardImages.INDUSTRY, NssGradients.Amber),
     )
-    val total = budgetLines.sumOf { it.second }.coerceAtLeast(1L)
+    val total = budgetLines.sumOf { it.spent }.coerceAtLeast(1L)
 
-    budgetLines.forEach { (dept, spent, color) ->
-        val pct = (spent.toFloat() / total * 100f).coerceIn(0f, 100f)
-        NssCard {
+    budgetLines.forEach { line ->
+        val pct = (line.spent.toFloat() / total * 100f).coerceIn(0f, 100f)
+        NssStripPhotoCard(
+            imageUrl = line.imageUrl,
+            fallbackGradient = line.fallbackGradient,
+        ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.width(4.dp).height(48.dp).background(color))
+                Box(modifier = Modifier.width(4.dp).height(48.dp).background(line.accent))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(dept, color = NssForeground, fontWeight = FontWeight.Bold)
+                        Text(line.dept, color = NssForeground, fontWeight = FontWeight.Bold)
                         Text("${pct.roundToInt()}% of budget", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    NssProgressBar(percent = pct, color = color, thick = true)
+                    NssProgressBar(percent = pct, color = line.accent, thick = true)
                     Text(
-                        text = "Spent: ${formatMa2Money(spent)}/mo",
+                        text = "Spent: ${formatMa2Money(line.spent)}/mo",
                         style = MaterialTheme.typography.labelSmall,
                         color = NssMutedForeground,
                         modifier = Modifier.padding(top = 6.dp),
@@ -239,6 +252,14 @@ private fun BudgetTab(state: GameState) {
     }
 }
 
+private data class BudgetLine(
+    val dept: String,
+    val spent: Long,
+    val accent: Color,
+    val imageUrl: String,
+    val fallbackGradient: List<Color>,
+)
+
 @Composable
 private fun TradeTab(state: GameState) {
     state.diplomacy.rivals.filter { it.hasTradeTreaty || it.relationshipScore >= 40 }.take(6).chunked(2).forEach { row ->
@@ -247,7 +268,11 @@ private fun TradeTab(state: GameState) {
                 val exports = if (rival.hasTradeTreaty) 30_000_000_000L else 10_000_000_000L
                 val imports = 15_000_000_000L
                 val balance = exports - imports
-                NssCard(modifier = Modifier.weight(1f)) {
+                NssStripPhotoCard(
+                    imageUrl = NssCardImages.BANNER_FOREIGN,
+                    fallbackGradient = NssGradients.Foreign,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
                         Text(
@@ -286,13 +311,13 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
     val production = state.production
     val total = (economy.factories + economy.farms + production.powerPlants + production.mines + 1).toFloat()
     return listOf(
-        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, NssGradients.Emerald),
-        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), NssGradients.Sky),
-        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, NssGradients.Indigo),
-        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), NssGradients.Violet),
-        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), NssGradients.Amber),
-        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), NssGradients.Orange),
-        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, NssGradients.Red),
+        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, NssGradients.Emerald, NssCardImages.SERVICES),
+        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), NssGradients.Sky, NssCardImages.INDUSTRY),
+        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, NssGradients.Indigo, NssCardImages.MANUFACTURING),
+        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), NssGradients.Violet, NssCardImages.TECHNOLOGY),
+        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), NssGradients.Amber, NssCardImages.AGRICULTURE),
+        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), NssGradients.Orange, NssCardImages.ENERGY),
+        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, NssGradients.Red, NssCardImages.DEFENSE_IND),
     )
 }
 

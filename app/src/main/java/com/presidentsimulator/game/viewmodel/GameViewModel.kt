@@ -10,6 +10,7 @@ import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.data.EventRepository
 import com.presidentsimulator.game.data.GameEvent
 import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.data.ResearchState
 import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.data.MissionType
 import com.presidentsimulator.game.data.SaveLoadFeedback
@@ -207,6 +208,26 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun unlockTechnology(techId: String) {
         if (_currentActiveEvent.value != null) return
         _state.update { advancementEngine.unlockTechnology(it, techId) }
+    }
+
+    fun startResearch(techId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { advancementEngine.startResearch(it, techId) }
+    }
+
+    fun allocateExtraResearchFunding() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { advancementEngine.allocateExtraResearchFunding(it) }
+    }
+
+    fun canStartResearch(techId: String): Boolean =
+        AdvancementViewModel.canStartResearch(_state.value, techId)
+
+    fun canAllocateExtraResearchFunding(): Boolean {
+        val research = _state.value.research
+        return research.activeTechId != null &&
+            research.extraFundingTier < ResearchState.MAX_EXTRA_FUNDING_TIER &&
+            _state.value.vitals.budget >= AdvancementViewModel.EXTRA_RESEARCH_FUNDING_COST
     }
 
     fun adjustMinistryFunding(ministry: SocietyMinistry, newFundingLevel: Float) {

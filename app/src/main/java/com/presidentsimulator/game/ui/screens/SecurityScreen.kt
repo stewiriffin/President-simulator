@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +46,9 @@ import com.presidentsimulator.game.data.MissionType
 import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.SecurityProtocol
 import com.presidentsimulator.game.ui.components.ActiveOperationCard
+import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssMinistryBanner
 import com.presidentsimulator.game.ui.components.graphics.CountryFlag
 import com.presidentsimulator.game.ui.components.graphics.rivalIdToCountryCode
 import com.presidentsimulator.game.ui.theme.DeficitRed
@@ -69,12 +73,20 @@ fun SecurityScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Internal Security", "Foreign Intelligence")
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "Secret Service",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        NssMinistryBanner(
+            ministryLabel = "INTELLIGENCE",
+            imageUrl = NssCardImages.BANNER_INTELLIGENCE,
+            statPills = listOf(
+                "Missions: ${state.espionage.activeMissionCount}",
+                "Risk: ${state.internalSecurity.coupRisk.roundToInt()}%",
+                "Budget: ${state.internalSecurity.monthlyUpkeep.toBudgetString()}/mo",
+            ),
+            gradientColors = NssGradients.Violet,
         )
 
         ScrollableTabRow(selectedTabIndex = selectedTab) {

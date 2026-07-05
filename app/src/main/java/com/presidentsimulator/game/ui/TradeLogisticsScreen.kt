@@ -37,8 +37,10 @@ import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeDeal
 import com.presidentsimulator.game.data.TradeType
-import com.presidentsimulator.game.viewmodel.TradeMarketViewModel
+import com.presidentsimulator.game.ui.theme.InfoBlue
+import com.presidentsimulator.game.ui.theme.ProfitGreen
 import com.presidentsimulator.game.viewmodel.GameViewModel
+import com.presidentsimulator.game.viewmodel.TradeMarketViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
 import kotlin.math.roundToInt
 
@@ -314,7 +316,7 @@ private fun ActiveDealCard(
     val partnerName = state.diplomacy.rivalById(deal.partnerCountryId)?.name
         ?: deal.partnerCountryId
     val isImport = deal.type == TradeType.IMPORT
-    val flowColor = if (isImport) Color(0xFF2A9D8F) else Color(0xFF457B9D)
+    val flowColor = if (isImport) ProfitGreen else InfoBlue
     val flowLabel = if (isImport) "⬇ IMPORT" else "⬆ EXPORT"
 
     Card(modifier = Modifier.fillMaxWidth()) {

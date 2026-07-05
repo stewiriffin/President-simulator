@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.ui.theme.NssAccent
@@ -44,6 +46,7 @@ import com.presidentsimulator.game.ui.theme.NssDestructive
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssIndigo
+import com.presidentsimulator.game.ui.theme.NssMuted
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOrange
 import com.presidentsimulator.game.ui.theme.NssPrimary
@@ -51,7 +54,7 @@ import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.theme.NssSecondary
 import com.presidentsimulator.game.ui.theme.NssSky
 import com.presidentsimulator.game.ui.theme.NssViolet
-import com.presidentsimulator.game.ui.theme.StarkWhite
+import com.presidentsimulator.game.ui.theme.NssOnPhoto
 
 @Composable
 fun NssCard(
@@ -143,7 +146,7 @@ fun NssTabBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.2f)),
+                .background(NssMuted),
         ) {
             tabs.forEach { tab ->
                 val selected = tab == selectedTab
@@ -180,32 +183,21 @@ fun NssTabBar(
 fun NssMinistryBanner(
     ministryLabel: String,
     statPills: List<String>,
+    imageUrl: String? = null,
     gradientColors: List<Color> = listOf(NssBackground, NssSecondary, NssPrimary.copy(alpha = 0.35f)),
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(160.dp)
-            .background(Brush.horizontalGradient(gradientColors)),
+            .height(160.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(NssBackground.copy(alpha = 0.95f), NssBackground.copy(alpha = 0.6f), Color.Transparent),
-                    ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, NssBackground.copy(alpha = 0.7f)),
-                    ),
-                ),
+        NssPhotoHeader(
+            imageUrl = imageUrl,
+            fallbackGradient = gradientColors,
+            modifier = Modifier.matchParentSize(),
+            scrimLeftToRight = MinistryBannerLeftScrim,
+            scrimTopToBottom = MinistryBannerBottomScrim,
         )
         Column(
             modifier = Modifier
@@ -221,7 +213,7 @@ fun NssMinistryBanner(
             Text(
                 text = ministryLabel.uppercase(),
                 style = MaterialTheme.typography.headlineSmall,
-                color = StarkWhite,
+                color = NssOnPhoto,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(bottom = 12.dp),
             )
@@ -230,10 +222,10 @@ fun NssMinistryBanner(
                     Text(
                         text = pill,
                         modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.5f))
-                            .border(1.dp, Color.White.copy(alpha = 0.1f))
+                            .background(NssForeground.copy(alpha = 0.72f))
+                            .border(1.dp, NssOnPhoto.copy(alpha = 0.2f))
                             .padding(horizontal = 12.dp, vertical = 4.dp),
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = NssOnPhoto.copy(alpha = 0.95f),
                         fontSize = 10.sp,
                     )
                 }
@@ -273,6 +265,31 @@ fun NssCompactKpi(
 }
 
 @Composable
+fun NssStripPhotoCard(
+    imageUrl: String?,
+    fallbackGradient: List<Color> = listOf(NssSecondary, NssCard),
+    modifier: Modifier = Modifier,
+    headerHeight: Dp = 72.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .border(1.dp, NssBorder)
+            .background(NssCard),
+    ) {
+        NssPhotoHeader(
+            imageUrl = imageUrl,
+            fallbackGradient = fallbackGradient,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(headerHeight),
+            scrimTopToBottom = listOf(Color.Transparent, NssCard.copy(alpha = 0.85f)),
+        )
+        Column(modifier = Modifier.padding(16.dp), content = content)
+    }
+}
+
+@Composable
 fun NssSectorCard(
     name: String,
     gdpShare: Float,
@@ -280,6 +297,7 @@ fun NssSectorCard(
     growth: Float,
     level: Int,
     headerGradient: List<Color>,
+    imageUrl: String? = null,
     onInvest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -289,16 +307,13 @@ fun NssSectorCard(
             .border(1.dp, NssBorder)
             .background(NssCard),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(Brush.verticalGradient(headerGradient)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, NssCard))),
+        Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+            NssPhotoHeader(
+                imageUrl = imageUrl,
+                fallbackGradient = headerGradient,
+                modifier = Modifier.matchParentSize(),
+                tintGradient = listOf(headerGradient.first().copy(alpha = 0.75f), Color.Transparent),
+                scrimTopToBottom = CardHeaderBottomScrim,
             )
             Text(
                 text = "${if (growth >= 0) "▲" else "▼"} ${"%.1f".format(kotlin.math.abs(growth))}% YOY",
@@ -308,12 +323,12 @@ fun NssSectorCard(
                     .border(1.dp, if (growth >= 0) NssEmerald.copy(alpha = 0.4f) else NssRed.copy(alpha = 0.4f))
                     .background(if (growth >= 0) NssEmerald.copy(alpha = 0.25f) else NssRed.copy(alpha = 0.25f))
                     .padding(horizontal = 6.dp, vertical = 2.dp),
-                color = if (growth >= 0) Color(0xFF6EE7B7) else Color(0xFFFCA5A5),
+                color = if (growth >= 0) NssEmerald else NssRed,
                 fontSize = 9.sp,
             )
             Text(
                 text = name,
-                color = StarkWhite,
+                color = NssOnPhoto,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 modifier = Modifier
@@ -372,7 +387,7 @@ fun NssSectorCard(
                 .background(if (invested) NssPrimary else Color.Transparent)
                 .border(width = 0.dp, color = Color.Transparent)
                 .padding(vertical = 10.dp),
-            color = if (invested) StarkWhite else NssPrimary,
+            color = if (invested) NssOnPhoto else NssPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -420,6 +435,7 @@ fun NssUnitCard(
     maintLabel: String,
     headerGradient: List<Color>,
     accentColor: Color,
+    imageUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -427,28 +443,28 @@ fun NssUnitCard(
             .border(1.dp, NssBorder)
             .background(NssCard),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .background(Brush.verticalGradient(headerGradient)),
-        ) {
-            Box(modifier = Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, NssCard))))
+        Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
+            NssPhotoHeader(
+                imageUrl = imageUrl,
+                fallbackGradient = headerGradient,
+                modifier = Modifier.matchParentSize(),
+                scrimTopToBottom = CardHeaderBottomScrim,
+            )
             NssBadge(label = branch, modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
             Text(
                 text = "×$count",
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(8.dp)
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(NssForeground.copy(alpha = 0.72f))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
-                color = StarkWhite,
+                color = NssOnPhoto,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
             )
             Text(
                 text = unitName,
-                color = StarkWhite,
+                color = NssOnPhoto,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
@@ -505,6 +521,7 @@ fun NssRecruitCard(
     quantity: Int,
     headerGradient: List<Color>,
     accentColor: Color,
+    imageUrl: String? = null,
     onQuantityChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -516,13 +533,13 @@ fun NssRecruitCard(
             )
             .background(NssCard),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp)
-                .background(Brush.verticalGradient(headerGradient)),
-        ) {
-            Box(modifier = Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.8f)))))
+        Box(modifier = Modifier.fillMaxWidth().height(90.dp)) {
+            NssPhotoHeader(
+                imageUrl = imageUrl,
+                fallbackGradient = headerGradient,
+                modifier = Modifier.matchParentSize(),
+                scrimTopToBottom = CardHeaderBottomScrim,
+            )
             NssBadge(label = branch, modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
             if (quantity > 0) {
                 Text(
@@ -532,14 +549,14 @@ fun NssRecruitCard(
                         .padding(8.dp)
                         .background(NssPrimary)
                         .padding(horizontal = 8.dp, vertical = 2.dp),
-                    color = StarkWhite,
+                    color = NssOnPhoto,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                 )
             }
             Column(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)) {
-                Text(name, color = StarkWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Text(costLabel, color = NssPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(name, color = NssOnPhoto, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(costLabel, color = NssOnPhoto.copy(alpha = 0.9f), fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
         }
         Column(modifier = Modifier.padding(12.dp)) {
@@ -629,7 +646,7 @@ fun NssNationCard(
             NssBadge(label = threat, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             Text(
                 text = nationName,
-                color = StarkWhite,
+                color = NssForeground,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
             )
@@ -700,13 +717,13 @@ fun NssAlertBanner(
         modifier = modifier
             .fillMaxWidth()
             .border(1.dp, NssAmber.copy(alpha = 0.3f))
-            .background(NssAmber.copy(alpha = 0.08f))
+            .background(NssAmber.copy(alpha = 0.12f))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(text = "⚠", color = NssAmber, fontSize = 14.sp)
-        Text(text = message.uppercase(), style = MaterialTheme.typography.labelMedium, color = Color(0xFFFCD34D))
+        Text(text = message.uppercase(), style = MaterialTheme.typography.labelMedium, color = NssAmber)
     }
 }
 
@@ -715,11 +732,13 @@ fun NssHeroBanner(
     ministryLabel: String,
     stats: List<HeroStat>,
     accentColor: Color = NssPrimary,
+    imageUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     NssMinistryBanner(
         ministryLabel = ministryLabel,
         statPills = stats.map { "${it.label}: ${it.value}" },
+        imageUrl = imageUrl,
         gradientColors = listOf(NssBackground, NssSecondary, accentColor.copy(alpha = 0.35f)),
         modifier = modifier,
     )
@@ -733,17 +752,17 @@ private fun badgeColors(label: String): BadgePalette {
     val upper = label.uppercase()
     return when {
         listOf("ALLY", "ALLIED", "ACTIVE", "LOW", "OPEN", "COMBAT READY", "PARTNER").any { upper.contains(it) } ->
-            BadgePalette(NssEmerald.copy(alpha = 0.2f), Color(0xFF6EE7B7), NssEmerald.copy(alpha = 0.4f))
+            BadgePalette(NssEmerald.copy(alpha = 0.15f), NssEmerald, NssEmerald.copy(alpha = 0.35f))
         listOf("PATROL", "ADVANCED", "FINAL", "INFO").any { upper.contains(it) } ->
-            BadgePalette(NssSky.copy(alpha = 0.2f), Color(0xFF7DD3FC), NssSky.copy(alpha = 0.4f))
+            BadgePalette(NssSky.copy(alpha = 0.15f), NssSky, NssSky.copy(alpha = 0.35f))
         listOf("NEUTRAL", "TRAINING", "STALLED", "WARN", "REVIEW", "MEDIUM", "NONE").any { upper.contains(it) } ->
-            BadgePalette(NssMutedForeground.copy(alpha = 0.2f), Color(0xFFCBD5E1), NssMutedForeground.copy(alpha = 0.4f))
+            BadgePalette(NssMutedForeground.copy(alpha = 0.12f), NssMutedForeground, NssMutedForeground.copy(alpha = 0.3f))
         listOf("RIVAL", "HIGH", "RESTRICTED", "STANDOFF").any { upper.contains(it) } ->
-            BadgePalette(NssAmber.copy(alpha = 0.2f), Color(0xFFFCD34D), NssAmber.copy(alpha = 0.4f))
+            BadgePalette(NssAmber.copy(alpha = 0.15f), NssAmber, NssAmber.copy(alpha = 0.35f))
         listOf("HOSTILE", "CRITICAL", "CRIT", "EMBARGO", "CONFLICT").any { upper.contains(it) } ->
-            BadgePalette(NssDestructive.copy(alpha = 0.2f), Color(0xFFFCA5A5), NssDestructive.copy(alpha = 0.4f))
+            BadgePalette(NssDestructive.copy(alpha = 0.12f), NssDestructive, NssDestructive.copy(alpha = 0.35f))
         else ->
-            BadgePalette(NssMutedForeground.copy(alpha = 0.2f), Color(0xFFCBD5E1), NssMutedForeground.copy(alpha = 0.4f))
+            BadgePalette(NssMutedForeground.copy(alpha = 0.12f), NssMutedForeground, NssMutedForeground.copy(alpha = 0.3f))
     }
 }
 
@@ -754,9 +773,9 @@ fun relationBarColor(value: Int): Color = when {
 }
 
 fun relationTextColor(value: Int): Color = when {
-    value >= 70 -> Color(0xFF6EE7B7)
-    value >= 40 -> Color(0xFFFCD34D)
-    else -> Color(0xFFFCA5A5)
+    value >= 70 -> NssEmerald
+    value >= 40 -> NssAmber
+    else -> NssRed
 }
 
 fun strengthBarColor(value: Int): Color = when {
@@ -775,23 +794,23 @@ fun prgColor(value: Int): Color = when {
 }
 
 object NssGradients {
-    val Emerald = listOf(Color(0xFF064E3B), Color(0xFF065F46), NssCard)
-    val Sky = listOf(Color(0xFF0C4A6E), Color(0xFF075985), NssCard)
-    val Indigo = listOf(Color(0xFF312E81), Color(0xFF3730A3), NssCard)
-    val Violet = listOf(Color(0xFF4C1D95), Color(0xFF5B21B6), NssCard)
-    val Amber = listOf(Color(0xFF78350F), Color(0xFF92400E), NssCard)
-    val Orange = listOf(Color(0xFF7C2D12), Color(0xFF9A3412), NssCard)
-    val Red = listOf(Color(0xFF7F1D1D), Color(0xFF991B1B), NssCard)
-    val Neutral = listOf(NssCard, NssBorder, NssCard)
-    val Economy = listOf(NssBackground, Color(0xFF1E3A5F), NssPrimary.copy(alpha = 0.4f))
-    val Defense = listOf(NssBackground, Color(0xFF1A2840), NssRed.copy(alpha = 0.3f))
-    val Foreign = listOf(NssBackground, Color(0xFF1A2840), NssSky.copy(alpha = 0.3f))
+    val Emerald = listOf(Color(0xFFD1FAE5), Color(0xFF6EE7B7), NssCard)
+    val Sky = listOf(Color(0xFFE0F2FE), Color(0xFF7DD3FC), NssCard)
+    val Indigo = listOf(Color(0xFFE0E7FF), Color(0xFFA5B4FC), NssCard)
+    val Violet = listOf(Color(0xFFEDE9FE), Color(0xFFC4B5FD), NssCard)
+    val Amber = listOf(Color(0xFFFEF3C7), Color(0xFFFCD34D), NssCard)
+    val Orange = listOf(Color(0xFFFFEDD5), Color(0xFFFDBA74), NssCard)
+    val Red = listOf(Color(0xFFFEE2E2), Color(0xFFFCA5A5), NssCard)
+    val Neutral = listOf(NssSecondary, NssBorder, NssCard)
+    val Economy = listOf(NssBackground, Color(0xFFDBEAFE), NssPrimary.copy(alpha = 0.25f))
+    val Defense = listOf(NssBackground, Color(0xFFFEE2E2), NssRed.copy(alpha = 0.18f))
+    val Foreign = listOf(NssBackground, Color(0xFFE0F2FE), NssSky.copy(alpha = 0.2f))
 }
 
 object NssNationColors {
-    val Ally = Color(0xFF1E3A8A)
-    val Partner = Color(0xFF064E3B)
-    val Neutral = Color(0xFF334155)
-    val Rival = Color(0xFF450A0A)
-    val Hostile = Color(0xFF450A0A)
+    val Ally = Color(0xFFDBEAFE)
+    val Partner = Color(0xFFD1FAE5)
+    val Neutral = Color(0xFFE2E8F0)
+    val Rival = Color(0xFFFEF3C7)
+    val Hostile = Color(0xFFFEE2E2)
 }
