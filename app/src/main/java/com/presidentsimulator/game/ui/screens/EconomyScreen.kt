@@ -111,8 +111,7 @@ fun EconomyScreen(
             statPills = listOf(
                 "GDP ${formatMa2Money(gdp)}",
                 "Growth +${(state.netIncome.coerceAtLeast(0) * 100 / gdp.coerceAtLeast(1)).coerceAtMost(99)}%",
-                "Trade ${if (tradeBalance >= 0) "+" else ""}${formatMa2Money(tradeBalance)}",
-                "Tax ${(state.economy.taxRate * 100).roundToInt()}%",
+                "Inflation 3.7%",
             ),
             gradientColors = NssGradients.Economy,
         )

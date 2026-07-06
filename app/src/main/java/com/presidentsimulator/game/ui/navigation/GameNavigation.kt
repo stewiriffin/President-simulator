@@ -1,15 +1,10 @@
 package com.presidentsimulator.game.ui.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -19,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -33,7 +27,7 @@ import com.presidentsimulator.game.audio.playClick
 import com.presidentsimulator.game.ui.GovernanceUNScreen
 import com.presidentsimulator.game.ui.components.EventCrisisDialog
 import com.presidentsimulator.game.ui.components.GlobalHud
-import com.presidentsimulator.game.ui.components.MinistrySideNav
+import com.presidentsimulator.game.ui.components.MinistryBottomNav
 import com.presidentsimulator.game.ui.components.collectAlertCount
 import com.presidentsimulator.game.ui.screens.DiplomacyScreen
 import com.presidentsimulator.game.ui.screens.EconomyScreen
@@ -73,6 +67,15 @@ fun GameNavigation(
 
     val context = LocalContext.current
     val audio = remember(context) { GameAudioManager.getInstance(context) }
+
+    val navigate: (GameDestination) -> Unit = { destination ->
+        audio.playClick()
+        navController.navigate(destination.route) {
+            launchSingleTop = true
+            popUpTo(GameDestination.Dashboard.route) { saveState = true }
+            restoreState = true
+        }
+    }
 
     GameAudioBridge(state = state)
     GameAudioCrisisEffect(hasActiveEvent = activeEvent != null)
@@ -127,64 +130,49 @@ fun GameNavigation(
             },
         )
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-
-        Row(modifier = Modifier.fillMaxSize()) {
-            MinistrySideNav(
-                state = state,
-                currentRoute = currentRoute,
-                onNavigate = { destination ->
-                    audio.playClick()
-                    navController.navigate(destination.route) {
-                        launchSingleTop = true
-                        popUpTo(GameDestination.Economy.route) { saveState = true }
-                        restoreState = true
-                    }
-                },
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(1.dp)
-                    .background(MaterialTheme.colorScheme.outline),
-            )
-
-            NavHost(
-                navController = navController,
-                startDestination = GameDestination.Economy.route,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            ) {
-                composable(GameDestination.Dashboard.route) {
-                    MainDashboardScreen(state = state)
-                }
-                composable(GameDestination.Economy.route) {
-                    EconomyScreen(state = state, viewModel = viewModel)
-                }
-                composable(GameDestination.Military.route) {
-                    MilitaryScreen(state = state, viewModel = viewModel)
-                }
-                composable(GameDestination.Diplomacy.route) {
-                    DiplomacyScreen(state = state, viewModel = viewModel)
-                }
-                composable(GameDestination.SecretService.route) {
-                    SecretServiceScreen(state = state, viewModel = viewModel)
-                }
-                composable(GameDestination.Science.route) {
-                    ScienceScreen(viewModel = viewModel)
-                }
-                composable(GameDestination.LawsSociety.route) {
-                    LawsSocietyScreen(viewModel = viewModel)
-                }
-                composable(GameDestination.Governance.route) {
-                    GovernanceUNScreen(state = state, viewModel = viewModel)
-                }
-                composable(GameDestination.AudioSettings.route) {
-                    SettingsAudioScreen()
-                }
+        NavHost(
+            navController = navController,
+            startDestination = GameDestination.Dashboard.route,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxSize(),
+        ) {
+            composable(GameDestination.Dashboard.route) {
+                MainDashboardScreen(
+                    state = state,
+                    onNavigate = navigate,
+                )
+            }
+            composable(GameDestination.Economy.route) {
+                EconomyScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.Military.route) {
+                MilitaryScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.Diplomacy.route) {
+                DiplomacyScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.SecretService.route) {
+                SecretServiceScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.Science.route) {
+                ScienceScreen(viewModel = viewModel)
+            }
+            composable(GameDestination.LawsSociety.route) {
+                LawsSocietyScreen(viewModel = viewModel)
+            }
+            composable(GameDestination.Governance.route) {
+                GovernanceUNScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.AudioSettings.route) {
+                SettingsAudioScreen()
             }
         }
+
+        MinistryBottomNav(
+            state = state,
+            currentRoute = currentRoute,
+            onNavigate = navigate,
+        )
     }
 }

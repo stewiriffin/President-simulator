@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssCard
 import com.presidentsimulator.game.ui.theme.NssForeground
 
@@ -65,14 +66,14 @@ val CardHeaderBottomScrim = listOf(
     NssForeground.copy(alpha = 0.62f),
 )
 
-/** Ministry banner scrims — dark overlay for readable text on photos */
+/** Ministry banner scrims — parchment wash for navy titles on photos */
 val MinistryBannerLeftScrim = listOf(
-    NssForeground.copy(alpha = 0.82f),
-    NssForeground.copy(alpha = 0.45f),
+    NssBackground.copy(alpha = 0.92f),
+    NssBackground.copy(alpha = 0.55f),
     Color.Transparent,
 )
 
 val MinistryBannerBottomScrim = listOf(
     Color.Transparent,
-    NssForeground.copy(alpha = 0.55f),
+    NssBackground.copy(alpha = 0.35f),
 )

@@ -28,7 +28,10 @@ object NssCardImages {
     const val BANNER_ECONOMY = "https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_DEFENSE = "https://images.unsplash.com/photo-1678818048682-44b5cc5375a1?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_FOREIGN = "https://images.unsplash.com/photo-1770308144171-77831cf9130a?w=1400&h=200&fit=crop&auto=format"
-    const val BANNER_DOMESTIC = "https://images.unsplash.com/photo-1515868769-ad822a0c67e9?w=1400&h=200&fit=crop&auto=format"
+    const val MAP = "https://images.unsplash.com/photo-1543191879-742cb35a3a4e?w=1200&h=400&fit=crop&auto=format"
+    const val PARLIAMENT = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=500&h=240&fit=crop&auto=format"
+
+    const val BANNER_DOMESTIC = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_INTELLIGENCE = "https://images.unsplash.com/photo-1737502483541-92e91801cfaf?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_SCIENCE = "https://images.unsplash.com/photo-1651340608985-d25cc73156e8?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_COMMAND = "https://images.unsplash.com/photo-1515868769-ad822a0c67e9?w=1400&h=200&fit=crop&auto=format"

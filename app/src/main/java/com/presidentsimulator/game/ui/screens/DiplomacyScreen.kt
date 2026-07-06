@@ -75,10 +75,9 @@ fun DiplomacyScreen(
             ministryLabel = "FOREIGN AFFAIRS",
             imageUrl = NssCardImages.BANNER_FOREIGN,
             statPills = listOf(
-                "Allies: ${state.diplomacy.rivals.count { it.relationshipScore >= 70 }}",
-                "Treaties: ${state.diplomacy.rivals.count { it.hasTradeTreaty || it.hasNonAggressionPact }}",
-                "Threats: ${state.diplomacy.rivals.count { it.relationshipScore < 20 }}",
-                "Influence: ${state.diplomacy.diplomaticInfluence}",
+                "Allies ${state.diplomacy.rivals.count { it.relationshipScore >= 70 }}",
+                "Treaties ${state.diplomacy.rivals.count { it.hasTradeTreaty || it.hasNonAggressionPact }} Active",
+                "Threats ${state.diplomacy.rivals.count { it.relationshipScore < 20 }} Critical",
             ),
             gradientColors = NssGradients.Foreign,
         )

@@ -87,10 +87,9 @@ fun MilitaryScreen(
             ministryLabel = "DEFENSE",
             imageUrl = NssCardImages.BANNER_DEFENSE,
             statPills = listOf(
-                "Power: ${state.effectiveCombatStrength.roundToInt()} pts",
-                "Personnel: ${military.personnel.toArmyString()}",
-                "Readiness: ${military.morale.roundToInt()}%",
-                "Budget: ${military.monthlyUpkeep.toBudgetString()}",
+                "Power ${state.effectiveCombatStrength.roundToInt()} pts",
+                "Personnel ${military.personnel.toArmyString()}",
+                "Readiness ${military.morale.roundToInt()}%",
             ),
             gradientColors = NssGradients.Defense,
         )

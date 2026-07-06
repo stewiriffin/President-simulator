@@ -11,21 +11,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Nation State Simulator visual system: light professional dashboard, blue primary, emerald accent.
+ * Nation State Simulator visual system: warm parchment surfaces, navy primary, gold accent.
  */
 private val NssColors = lightColorScheme(
     primary = NssPrimary,
     onPrimary = StarkWhite,
-    primaryContainer = Color(0xFFDBEAFE),
-    onPrimaryContainer = Color(0xFF0E3A7A),
-    secondary = NssSky,
-    onSecondary = StarkWhite,
-    secondaryContainer = Color(0xFFE0F2FE),
-    onSecondaryContainer = Color(0xFF0C4A6E),
+    primaryContainer = Color(0xFFD4E0F0),
+    onPrimaryContainer = Color(0xFF0F2347),
+    secondary = NssSecondary,
+    onSecondary = NssForeground,
+    secondaryContainer = Color(0xFFEDE4D0),
+    onSecondaryContainer = NssForeground,
     tertiary = NssAccent,
     onTertiary = StarkWhite,
-    tertiaryContainer = Color(0xFFD1FAE5),
-    onTertiaryContainer = Color(0xFF064E3B),
+    tertiaryContainer = Color(0xFFF5E6C8),
+    onTertiaryContainer = Color(0xFF5C3D0A),
     background = NssBackground,
     onBackground = NssForeground,
     surface = NssCard,
@@ -33,18 +33,18 @@ private val NssColors = lightColorScheme(
     surfaceVariant = NssSecondary,
     onSurfaceVariant = NssMutedForeground,
     outline = NssBorder,
-    outlineVariant = Color(0xFFE2E8F0),
+    outlineVariant = Color(0xFFE6DDC8),
     error = NssDestructive,
     onError = StarkWhite,
-    errorContainer = Color(0xFFFEE2E2),
-    onErrorContainer = Color(0xFF7F1D1D),
+    errorContainer = Color(0xFFF5D5D5),
+    onErrorContainer = Color(0xFF6B1515),
 )
 
 private val NssTypography = Typography(
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
+        fontSize = 22.sp,
         letterSpacing = 1.sp,
     ),
     titleMedium = TextStyle(
