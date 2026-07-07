@@ -1,8 +1,8 @@
 package com.presidentsimulator.game.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,23 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,19 +24,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.presidentsimulator.game.data.Alliance
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.PLAYER_COUNTRY_ID
 import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.UNResolution
+import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssCardShape
+import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
-import com.presidentsimulator.game.ui.components.NssMinistryBanner
-import com.presidentsimulator.game.ui.theme.ProfitGreen
-import com.presidentsimulator.game.ui.theme.DeficitRed
+import com.presidentsimulator.game.ui.components.NssPanel
+import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.NssTabBar
+import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssEmerald
+import com.presidentsimulator.game.ui.theme.NssForeground
+import com.presidentsimulator.game.ui.theme.NssMutedForeground
+import com.presidentsimulator.game.ui.theme.NssOnPhoto
+import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.GovernanceViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
@@ -64,57 +64,38 @@ fun GovernanceUNScreen(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf("ASSEMBLY") }
     var showCreateAlliance by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(NssBackground),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            NssMinistryBanner(
-                ministryLabel = "UNITED NATIONS",
-                imageUrl = NssCardImages.BANNER_FOREIGN,
-                statPills = listOf(
-                    "Influence: ${state.governance.diplomaticInfluence}",
-                    "Alliances: ${state.governance.activeAlliances.size}",
-                    "Resolution: ${if (state.governance.activeResolution != null) "ACTIVE" else "NONE"}",
-                ),
-                gradientColors = NssGradients.Sky,
+        NssScreenHeader(
+            title = "United Nations",
+            imageUrl = NssCardImages.BANNER_FOREIGN,
+            statPills = listOf(
+                "Influence" to "${state.governance.diplomaticInfluence}",
+                "Alliances" to "${state.governance.activeAlliances.size}",
+                "Resolution" to if (state.governance.activeResolution != null) "ACTIVE" else "NONE",
+            ),
+            gradientColors = NssGradients.Sky,
+        )
+
+        NssTabBar(
+            tabs = listOf("ASSEMBLY", "COALITIONS"),
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+        )
+
+        when (selectedTab) {
+            "ASSEMBLY" -> AssemblyPanel(state = state, viewModel = viewModel)
+            else -> CoalitionsPanel(
+                state = state,
+                viewModel = viewModel,
+                onCreateAlliance = { showCreateAlliance = true },
             )
-
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("The Assembly") },
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Coalitions") },
-                )
-            }
-
-            when (selectedTab) {
-                0 -> AssemblyPanel(state = state, viewModel = viewModel)
-                else -> CoalitionsPanel(state = state, viewModel = viewModel)
-            }
-        }
-
-        if (selectedTab == 1) {
-            FloatingActionButton(
-                onClick = { showCreateAlliance = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(20.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Create New Coalition",
-                )
-            }
         }
     }
 
@@ -147,21 +128,25 @@ private fun AssemblyPanel(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (state.governance.lastResolutionResult.isNotBlank()) {
-            Text(
-                text = state.governance.lastResolutionResult,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.secondary,
-            )
+            NssPanel(modifier = Modifier.fillMaxWidth(), highlighted = true) {
+                Text(
+                    text = state.governance.lastResolutionResult,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = NssForeground,
+                )
+            }
         }
 
         ActiveModifiersCard(state = state)
 
         if (resolution == null) {
             Text(
-                text = "Propose a Resolution",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "PROPOSE A RESOLUTION",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
             ResolutionType.entries.forEach { type ->
                 ProposalCard(
@@ -175,16 +160,18 @@ private fun AssemblyPanel(
         } else {
             LiveVoteTracker(resolution = resolution)
             Text(
-                text = "Undecided Nations",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "UNDECIDED NATIONS",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
             val undecided = GovernanceViewModel.undecidedNations(state)
             if (undecided.isEmpty()) {
                 Text(
                     text = "All nations have voted. Awaiting session close.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    color = NssMutedForeground,
                 )
             } else {
                 undecided.forEach { countryId ->
@@ -209,27 +196,14 @@ private fun ActiveModifiersCard(state: GameState) {
         if (state.governance.peacekeepingActive) add("Peacekeeping")
         if (state.governance.weaponsBanActive) add("Weapons Ban")
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = "Active Global Mandates",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = if (active.isEmpty()) {
-                    "None currently in force"
-                } else {
-                    active.joinToString(" · ")
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("Active Global Mandates", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+        Text(
+            text = if (active.isEmpty()) "None currently in force" else active.joinToString(" · "),
+            fontSize = 12.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -242,65 +216,58 @@ private fun ProposalCard(
     var selectedTarget by remember { mutableStateOf(state.diplomacy.rivals.firstOrNull()?.id) }
     val canPropose = GovernanceViewModel.canPropose(state, type)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = type.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = type.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Influence cost: ${type.influenceCost} · Voting window: ${type.votingDurationTicks} months",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text(type.displayName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+        Text(type.description, fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            text = "Influence ${type.influenceCost} · Window ${type.votingDurationTicks} months",
+            fontSize = 10.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
 
-            if (type.requiresTarget) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Target nation", style = MaterialTheme.typography.labelLarge)
-                state.diplomacy.rivals.forEach { rival ->
-                    OutlinedButton(
-                        onClick = { selectedTarget = rival.id },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        colors = if (selectedTarget == rival.id) {
-                            ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            )
-                        } else {
-                            ButtonDefaults.outlinedButtonColors()
-                        },
-                    ) {
-                        Text("${rival.flagEmoji} ${rival.name}")
-                    }
-                }
-            }
-
+        if (type.requiresTarget) {
             Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    onPropose(if (type.requiresTarget) selectedTarget else null)
-                },
-                enabled = canPropose && (!type.requiresTarget || selectedTarget != null),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            Text("Target nation", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NssPrimary)
+            state.diplomacy.rivals.forEach { rival ->
+                val selected = selectedTarget == rival.id
                 Text(
-                    if (canPropose) {
-                        "Submit to Assembly"
-                    } else if (state.governance.activeResolution != null) {
-                        "Floor occupied"
-                    } else {
-                        "Insufficient influence"
-                    },
+                    text = "${rival.flagEmoji} ${rival.name}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) NssPrimary.copy(alpha = 0.15f) else NssMutedForeground.copy(alpha = 0.08f))
+                        .clickable { selectedTarget = rival.id }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontSize = 12.sp,
+                    color = if (selected) NssPrimary else NssForeground,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        val enabled = canPropose && (!type.requiresTarget || selectedTarget != null)
+        Text(
+            text = when {
+                canPropose -> "Submit to Assembly"
+                state.governance.activeResolution != null -> "Floor occupied"
+                else -> "Insufficient influence"
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(if (enabled) NssPrimary else NssPrimary.copy(alpha = 0.35f))
+                .clickable(enabled = enabled) {
+                    onPropose(if (type.requiresTarget) selectedTarget else null)
+                }
+                .padding(vertical = 10.dp),
+            color = NssOnPhoto,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -311,53 +278,43 @@ private fun LiveVoteTracker(resolution: UNResolution) {
     val total = (forCount + againstCount).coerceAtLeast(1)
     val forFraction = forCount.toFloat() / total.toFloat()
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    NssPanel(modifier = Modifier.fillMaxWidth(), highlighted = true) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = "LIVE VOTE — ${resolution.type.displayName}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                text = "LIVE VOTE",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
-            Text(
-                text = "Countdown: ${resolution.votingTimeRemaining} month(s) remaining",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = "For: $forCount",
-                    color = ProfitGreen,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Against: $againstCount",
-                    color = Color(0xFFE76F51),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            LinearProgressIndicator(
-                progress = { forFraction },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp),
-                color = ProfitGreen,
-                trackColor = DeficitRed,
-            )
-            Text(
-                text = "Support share: ${(forFraction * 100f).roundToInt()}%",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            NssBadge(label = resolution.type.displayName)
         }
+        Text(
+            text = "${resolution.votingTimeRemaining} month(s) remaining",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = "For: $forCount", color = NssEmerald, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text(text = "Against: $againstCount", color = NssRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        NssGameBar(percent = forFraction, color = NssEmerald, thick = true)
+        Text(
+            text = "Support share: ${(forFraction * 100f).roundToInt()}%",
+            fontSize = 10.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -372,45 +329,46 @@ private fun BribeNationRow(
     val name = GovernanceViewModel.countryDisplayName(state, countryId)
     val rival = state.diplomacy.rivalById(countryId)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "${rival?.flagEmoji.orEmpty()} $name",
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = NssForeground,
+        )
+        Text(
+            text = "Relations: ${rival?.relationshipScore ?: 0} · Cost ${GovernanceViewModel.BRIBE_COST.toBudgetString()}",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "${rival?.flagEmoji.orEmpty()} $name",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                text = "Bribe For",
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(NssCardShape)
+                    .background(if (canAfford) NssEmerald else NssEmerald.copy(alpha = 0.35f))
+                    .clickable(enabled = canAfford, onClick = onBribeFor)
+                    .padding(vertical = 10.dp),
+                color = NssOnPhoto,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
             )
             Text(
-                text = "Relations: ${rival?.relationshipScore ?: 0}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onBribeFor,
-                    enabled = canAfford,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ProfitGreen,
-                    ),
-                ) {
-                    Text("Bribe For")
-                }
-                Button(
-                    onClick = onBribeAgainst,
-                    enabled = canAfford,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE76F51),
-                    ),
-                ) {
-                    Text("Bribe Against")
-                }
-            }
-            Text(
-                text = "Cost: ${GovernanceViewModel.BRIBE_COST.toBudgetString()}",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(top = 4.dp),
+                text = "Bribe Against",
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(NssCardShape)
+                    .background(if (canAfford) NssRed else NssRed.copy(alpha = 0.35f))
+                    .clickable(enabled = canAfford, onClick = onBribeAgainst)
+                    .padding(vertical = 10.dp),
+                color = NssOnPhoto,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -422,26 +380,48 @@ private fun BribeNationRow(
 private fun CoalitionsPanel(
     state: GameState,
     viewModel: GameViewModel,
+    onCreateAlliance: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-            .padding(bottom = 72.dp),
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "Active Coalitions",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (state.governance.activeAlliances.isEmpty()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = "No coalitions formed. Use the + button to invite friendly nations.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "ACTIVE COALITIONS",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
+            Text(
+                text = "+ New Coalition",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(NssPrimary)
+                    .clickable(onClick = onCreateAlliance)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                color = NssOnPhoto,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+            )
+        }
+
+        if (state.governance.activeAlliances.isEmpty()) {
+            NssPanel(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "No coalitions formed. Invite friendly nations to build a bloc.",
+                    fontSize = 12.sp,
+                    color = NssMutedForeground,
+                )
+            }
         } else {
             state.governance.activeAlliances.forEach { alliance ->
                 AllianceCard(
@@ -466,47 +446,46 @@ private fun AllianceCard(
 ) {
     val power = GovernanceViewModel.allianceMilitaryPower(state, alliance)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text(alliance.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = NssForeground)
+        Text(
+            text = "Leader: ${GovernanceViewModel.countryDisplayName(state, alliance.leaderCountryId)}",
+            fontSize = 12.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            text = "DEFCON ${alliance.sharedDefconLevel} · Combined power ${power.roundToInt()}",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text("Members", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NssPrimary)
+        alliance.memberCountryIds.forEach { memberId ->
+            val rival = state.diplomacy.rivalById(memberId)
+            val label = if (memberId == PLAYER_COUNTRY_ID) {
+                "🏛 Your Nation"
+            } else {
+                "${rival?.flagEmoji.orEmpty()} ${rival?.name ?: memberId}"
+            }
+            Text(text = "• $label", fontSize = 12.sp, color = NssForeground)
+        }
+        if (alliance.leaderCountryId == PLAYER_COUNTRY_ID) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = alliance.name,
-                style = MaterialTheme.typography.titleMedium,
+                text = "Dissolve Coalition",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(NssCardShape)
+                    .background(NssRed.copy(alpha = 0.85f))
+                    .clickable(onClick = onDissolve)
+                    .padding(vertical = 10.dp),
+                color = NssOnPhoto,
                 fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
             )
-            Text(
-                text = "Leader: ${GovernanceViewModel.countryDisplayName(state, alliance.leaderCountryId)}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = "Shared DEFCON: ${alliance.sharedDefconLevel} · " +
-                    "Combined power: ${power.roundToInt()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Members",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            alliance.memberCountryIds.forEach { memberId ->
-                val rival = state.diplomacy.rivalById(memberId)
-                val label = if (memberId == PLAYER_COUNTRY_ID) {
-                    "🏛 Your Nation"
-                } else {
-                    "${rival?.flagEmoji.orEmpty()} ${rival?.name ?: memberId}"
-                }
-                Text(text = "• $label", style = MaterialTheme.typography.bodyMedium)
-            }
-            if (alliance.leaderCountryId == PLAYER_COUNTRY_ID) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onDissolve,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Dissolve Coalition")
-                }
-            }
         }
     }
 }
@@ -524,60 +503,66 @@ private fun CreateAllianceDialog(
         rival.relationshipScore >= GovernanceViewModel.ALLIANCE_MIN_RELATION &&
             state.diplomacy.activeWar?.targetCountryId != rival.id
     }
+    val canConfirm = selected.isNotEmpty() &&
+        state.governance.diplomaticInfluence >= GovernanceViewModel.ALLIANCE_INFLUENCE_COST
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Create New Coalition") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Coalition name") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = "Invite friendly nations (relations ≥ ${GovernanceViewModel.ALLIANCE_MIN_RELATION}). " +
-                        "Influence cost: ${GovernanceViewModel.ALLIANCE_INFLUENCE_COST}",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                if (eligible.isEmpty()) {
-                    Text(
-                        text = "No eligible partners. Improve relations first.",
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                } else {
-                    eligible.forEach { rival ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = rival.id in selected,
-                                onCheckedChange = { checked ->
-                                    selected = if (checked) {
-                                        selected + rival.id
-                                    } else {
-                                        selected - rival.id
-                                    }
-                                },
-                            )
-                            Text("${rival.flagEmoji} ${rival.name} (${rival.relationshipScore})")
-                        }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(NssBackground)
+                .padding(20.dp),
+        ) {
+            Text("CREATE COALITION", fontSize = 10.sp, fontWeight = FontWeight.Black, color = NssPrimary, letterSpacing = 2.sp)
+            Text("New Coalition", fontWeight = FontWeight.Black, fontSize = 18.sp, color = NssForeground, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Coalition name") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = "Invite nations with relations ≥ ${GovernanceViewModel.ALLIANCE_MIN_RELATION}. Influence cost: ${GovernanceViewModel.ALLIANCE_INFLUENCE_COST}",
+                fontSize = 11.sp,
+                color = NssMutedForeground,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            if (eligible.isEmpty()) {
+                Text("No eligible partners. Improve relations first.", fontSize = 12.sp, color = NssRed)
+            } else {
+                eligible.forEach { rival ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = rival.id in selected,
+                            onCheckedChange = { checked ->
+                                selected = if (checked) selected + rival.id else selected - rival.id
+                            },
+                        )
+                        Text("${rival.flagEmoji} ${rival.name} (${rival.relationshipScore})", fontSize = 12.sp)
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name, selected.toList()) },
-                enabled = selected.isNotEmpty() &&
-                    state.governance.diplomaticInfluence >= GovernanceViewModel.ALLIANCE_INFLUENCE_COST,
-            ) {
-                Text("Found Coalition")
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                    Text("Cancel")
+                }
+                Text(
+                    text = "Found Coalition",
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(NssCardShape)
+                        .background(if (canConfirm) NssPrimary else NssPrimary.copy(alpha = 0.35f))
+                        .clickable(enabled = canConfirm) { onConfirm(name, selected.toList()) }
+                        .padding(vertical = 10.dp),
+                    color = NssOnPhoto,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
+        }
+    }
 }

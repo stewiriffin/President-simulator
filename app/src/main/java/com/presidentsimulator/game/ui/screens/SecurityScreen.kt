@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,15 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,22 +32,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MissionStatus
 import com.presidentsimulator.game.data.MissionType
 import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.SecurityProtocol
 import com.presidentsimulator.game.ui.components.ActiveOperationCard
+import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
+import com.presidentsimulator.game.ui.components.NssAlertBanner
+import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssCardShape
+import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
-import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.components.NssPanel
+import com.presidentsimulator.game.ui.components.NssPhotoHeader
+import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.graphics.CountryFlag
 import com.presidentsimulator.game.ui.components.graphics.rivalIdToCountryCode
-import com.presidentsimulator.game.ui.theme.DeficitRed
-import com.presidentsimulator.game.ui.theme.NeutralGray
-import com.presidentsimulator.game.ui.theme.ProfitGreen
-import com.presidentsimulator.game.ui.theme.WarningOrange
+import com.presidentsimulator.game.ui.theme.NssAccent
+import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssEmerald
+import com.presidentsimulator.game.ui.theme.NssForeground
+import com.presidentsimulator.game.ui.theme.NssMutedForeground
+import com.presidentsimulator.game.ui.theme.NssOnPhoto
+import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.viewmodel.EspionageSecurityViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
@@ -70,37 +80,33 @@ fun SecurityScreen(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Internal Security", "Foreign Intelligence")
+    var selectedTab by remember { mutableStateOf("INTERNAL") }
+    val tabs = listOf("INTERNAL", "FOREIGN")
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(NssBackground),
     ) {
-        NssMinistryBanner(
-            ministryLabel = "INTELLIGENCE",
+        NssScreenHeader(
+            title = "Intelligence",
             imageUrl = NssCardImages.BANNER_INTELLIGENCE,
             statPills = listOf(
-                "Missions: ${state.espionage.activeMissionCount}",
-                "Risk: ${state.internalSecurity.coupRisk.roundToInt()}%",
-                "Budget: ${state.internalSecurity.monthlyUpkeep.toBudgetString()}/mo",
+                "Missions" to "${state.espionage.activeMissionCount}",
+                "Risk" to "${state.internalSecurity.coupRisk.roundToInt()}%",
+                "Budget" to state.internalSecurity.monthlyUpkeep.toBudgetString(),
             ),
             gradientColors = NssGradients.Violet,
         )
 
-        ScrollableTabRow(selectedTabIndex = selectedTab) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) },
-                )
-            }
-        }
+        NssTabBar(
+            tabs = tabs,
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+        )
 
         when (selectedTab) {
-            0 -> InternalSecurityView(state = state, viewModel = viewModel)
+            "INTERNAL" -> InternalSecurityView(state = state, viewModel = viewModel)
             else -> ForeignIntelligenceView(state = state, viewModel = viewModel)
         }
     }
@@ -124,9 +130,11 @@ private fun InternalSecurityView(
     ) {
         item {
             Text(
-                text = "Vitals Dashboard",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "VITALS DASHBOARD",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
         }
 
@@ -148,77 +156,66 @@ private fun InternalSecurityView(
 
         if (security.coupRisk >= 75f || security.instabilityScore >= 75f) {
             item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = "Critical unrest — activate domestic operations or fund security immediately.",
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                NssAlertBanner("Critical unrest — activate domestic operations or fund security immediately.")
             }
         }
 
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Emergency Security Funding",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Each unit costs " +
-                            "${EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST.toBudgetString()} " +
-                            "and immediately lowers instability and coup risk.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NeutralGray,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(1, 5, 10).forEach { amount ->
-                            FilterChip(
-                                selected = fundAmount == amount,
-                                onClick = { if (maxFund >= amount) fundAmount = amount },
-                                enabled = maxFund >= amount,
-                                label = { Text("${amount}x") },
-                            )
-                        }
+            NssPanel(modifier = Modifier.fillMaxWidth()) {
+                Text("Emergency Security Funding", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+                Text(
+                    text = "Each unit costs ${EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST.toBudgetString()} and lowers instability and coup risk.",
+                    fontSize = 11.sp,
+                    color = NssMutedForeground,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1, 5, 10).forEach { amount ->
                         FilterChip(
-                            selected = fundAmount == maxFund && maxFund > 10,
-                            onClick = { if (maxFund > 0) fundAmount = maxFund },
-                            enabled = maxFund > 0,
-                            label = { Text(if (maxFund > 0) "Max ($maxFund)" else "Max") },
+                            selected = fundAmount == amount,
+                            onClick = { if (maxFund >= amount) fundAmount = amount },
+                            enabled = maxFund >= amount,
+                            label = { Text("${amount}x") },
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { viewModel.fundInternalSecurity(fundAmount) },
-                        enabled = fundAmount > 0 && maxFund >= fundAmount,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        val cost = fundAmount * EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST
-                        Text("Allocate ${cost.toBudgetString()}")
-                    }
+                    FilterChip(
+                        selected = fundAmount == maxFund && maxFund > 10,
+                        onClick = { if (maxFund > 0) fundAmount = maxFund },
+                        enabled = maxFund > 0,
+                        label = { Text(if (maxFund > 0) "Max ($maxFund)" else "Max") },
+                    )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Allocate ${(fundAmount * EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST).toBudgetString()}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(NssCardShape)
+                        .background(if (fundAmount > 0 && maxFund >= fundAmount) NssPrimary else NssPrimary.copy(alpha = 0.35f))
+                        .clickable(enabled = fundAmount > 0 && maxFund >= fundAmount) { viewModel.fundInternalSecurity(fundAmount) }
+                        .padding(vertical = 10.dp),
+                    color = NssOnPhoto,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
 
         item {
             Text(
-                text = "Domestic Operations",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "DOMESTIC OPERATIONS",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
             Text(
-                text = "Monthly protocol upkeep: ${security.monthlyUpkeep.toBudgetString()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = NeutralGray,
+                text = "Protocol upkeep: ${security.monthlyUpkeep.toBudgetString()}/mo",
+                fontSize = 11.sp,
+                color = NssMutedForeground,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
@@ -241,10 +238,10 @@ private fun RiskMeterCard(
     value: Float,
     flashWhenCritical: Boolean,
 ) {
-    val baseColor = when {
-        value >= 75f -> DeficitRed
-        value >= 40f -> WarningOrange
-        else -> ProfitGreen
+    val barColor = when {
+        value >= 75f -> NssRed
+        value >= 40f -> NssAccent
+        else -> NssEmerald
     }
     val label = when {
         value >= 75f -> "CRITICAL"
@@ -264,38 +261,21 @@ private fun RiskMeterCard(
     )
     val alpha = if (flashWhenCritical && value >= 75f) flashAlpha else 1f
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .alpha(alpha),
+    NssPanel(modifier = Modifier.fillMaxWidth().alpha(alpha)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "$label · ${value.toRiskString()}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = baseColor,
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { (value / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp),
-                color = baseColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            )
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+            NssBadge(label = "$label · ${value.toRiskString()}")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        NssGameBar(
+            percent = (value / 100f).coerceIn(0f, 1f),
+            color = barColor,
+            thick = true,
+        )
     }
 }
 
@@ -305,55 +285,47 @@ private fun SecurityMeasureCard(
     isActive: Boolean,
     onToggle: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-        ),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = protocol.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = if (isActive) "ACTIVE" else "OFF",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isActive) ProfitGreen else NeutralGray,
-                )
-            }
+    NssPanel(modifier = Modifier.fillMaxWidth(), highlighted = isActive) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = protocol.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = NeutralGray,
+                text = protocol.displayName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = NssForeground,
+                modifier = Modifier.weight(1f),
             )
-            Text(
-                text = "Upkeep: ${protocol.monthlyUpkeep.toBudgetString()}/mo · " +
-                    "Instability: -${protocol.instabilityReduction.toRiskString()} · " +
-                    "Approval: ${protocol.approvalPenalty.toRiskString()}",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onToggle,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (isActive) "Deactivate" else "Activate")
-            }
+            NssBadge(label = if (isActive) "ACTIVE" else "OFF")
         }
+        Text(
+            text = protocol.description,
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            text = "Upkeep ${protocol.monthlyUpkeep.toBudgetString()}/mo · Instability -${protocol.instabilityReduction.toRiskString()} · Approval ${protocol.approvalPenalty.toRiskString()}",
+            fontSize = 10.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (isActive) "Deactivate Protocol" else "Activate Protocol",
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(if (isActive) NssRed.copy(alpha = 0.85f) else NssPrimary)
+                .clickable(onClick = onToggle)
+                .padding(vertical = 10.dp),
+            color = NssOnPhoto,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -375,42 +347,37 @@ private fun ForeignIntelligenceView(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Spy Network",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text("Available spies: ${espionage.availableSpies} / ${espionage.spyCount}")
-                    Text("Intelligence budget: ${espionage.intelligencePoints} pts")
-                    Text("Active operations: ${espionage.activeMissionCount}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = viewModel::recruitSpy,
-                        enabled = state.vitals.budget >= EspionageSecurityViewModel.SPY_RECRUIT_COST,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            "Recruit Spy (" +
-                                "${EspionageSecurityViewModel.SPY_RECRUIT_COST.toBudgetString()})",
-                        )
-                    }
-                }
+            NssPanel(modifier = Modifier.fillMaxWidth()) {
+                Text("Spy Network", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+                Text("Available spies: ${espionage.availableSpies} / ${espionage.spyCount}", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+                Text("Intelligence budget: ${espionage.intelligencePoints} pts", fontSize = 11.sp, color = NssMutedForeground)
+                Text("Active operations: ${espionage.activeMissionCount}", fontSize = 11.sp, color = NssMutedForeground)
+                Spacer(modifier = Modifier.height(8.dp))
+                val canRecruit = state.vitals.budget >= EspionageSecurityViewModel.SPY_RECRUIT_COST
+                Text(
+                    text = "Recruit Spy (${EspionageSecurityViewModel.SPY_RECRUIT_COST.toBudgetString()})",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(NssCardShape)
+                        .background(if (canRecruit) NssPrimary else NssPrimary.copy(alpha = 0.35f))
+                        .clickable(enabled = canRecruit) { viewModel.recruitSpy() }
+                        .padding(vertical = 10.dp),
+                    color = NssOnPhoto,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
 
         if (activeMissions.isNotEmpty()) {
             item {
                 Text(
-                    text = "Ongoing Missions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "ONGOING MISSIONS",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = NssPrimary,
+                    letterSpacing = 2.sp,
                 )
             }
             items(activeMissions, key = { it.id }) { mission ->
@@ -425,9 +392,11 @@ private fun ForeignIntelligenceView(
         if (recentOutcomes.isNotEmpty()) {
             item {
                 Text(
-                    text = "Recent Outcomes",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "RECENT OUTCOMES",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = NssPrimary,
+                    letterSpacing = 2.sp,
                 )
             }
             items(recentOutcomes.take(4), key = { "done-${it.id}" }) { mission ->
@@ -441,9 +410,11 @@ private fun ForeignIntelligenceView(
 
         item {
             Text(
-                text = "Target Selection",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "TARGET SELECTION",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
             )
         }
 
@@ -479,53 +450,69 @@ private fun RivalIntelTargetCard(
     canDeploy: (MissionType) -> Boolean,
     onDeploy: (MissionType) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CountryFlag(
-                    countryCode = rivalIdToCountryCode(rival.id),
-                    size = 36.dp,
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth().height(72.dp).padding(bottom = 8.dp)) {
+            NssPhotoHeader(
+                imageUrl = NssCardImages.nationCardImage(rival.name.hashCode().mod(6).let { if (it < 0) -it else it }),
+                fallbackGradient = NssGradients.Violet,
+                modifier = Modifier.fillMaxSize(),
+                scrimTopToBottom = CardHeaderBottomScrim,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CountryFlag(
+                countryCode = rivalIdToCountryCode(rival.id),
+                size = 36.dp,
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text(
+                    text = rival.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = NssForeground,
                 )
-                Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                    Text(
-                        text = rival.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Security level: ${rival.militaryStrength.roundToInt()} · " +
-                            "Relations: ${rival.relationshipScore}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NeutralGray,
-                    )
-                }
-                OutlinedButton(onClick = onToggle) {
-                    Text(if (expanded) "Hide" else "Operations")
-                }
+                Text(
+                    text = "Security ${rival.militaryStrength.roundToInt()} · Relations ${rival.relationshipScore}",
+                    fontSize = 11.sp,
+                    color = NssMutedForeground,
+                )
             }
+            Text(
+                text = if (expanded) "Hide" else "Ops",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(NssPrimary.copy(alpha = 0.12f))
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                color = NssPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+            )
+        }
 
-            AnimatedVisibility(visible = expanded) {
-                Column(
-                    modifier = Modifier.padding(top = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "Covert Operations",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier.padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "COVERT OPERATIONS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    color = NssPrimary,
+                    letterSpacing = 2.sp,
+                )
+                MissionType.entries.forEach { missionType ->
+                    CovertOperationRow(
+                        missionType = missionType,
+                        successChance = estimateSuccess(missionType),
+                        enabled = canDeploy(missionType),
+                        onDeploy = { onDeploy(missionType) },
                     )
-                    MissionType.entries.forEach { missionType ->
-                        CovertOperationRow(
-                            missionType = missionType,
-                            successChance = estimateSuccess(missionType),
-                            enabled = canDeploy(missionType),
-                            onDeploy = { onDeploy(missionType) },
-                        )
-                    }
                 }
             }
         }
@@ -539,39 +526,38 @@ private fun CovertOperationRow(
     enabled: Boolean,
     onDeploy: () -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(
-                text = missionType.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = missionType.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = NeutralGray,
-            )
-            Text(
-                text = "Cost: ${missionType.budgetCost.toBudgetString()} · " +
-                    "Intel: -${missionType.intelCost} · " +
-                    "Duration: ${missionType.durationTicks} mo · " +
-                    "Success: ${(successChance * 100f).roundToInt()}%",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Button(
-                onClick = onDeploy,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (enabled) "Deploy Spy" else "Unavailable")
-            }
-        }
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = missionType.displayName,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            color = NssForeground,
+        )
+        Text(
+            text = missionType.description,
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Text(
+            text = "Cost ${missionType.budgetCost.toBudgetString()} · Intel -${missionType.intelCost} · ${missionType.durationTicks} mo · ${(successChance * 100f).roundToInt()}% success",
+            fontSize = 10.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = if (enabled) "Deploy Spy" else "Unavailable",
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(if (enabled) NssPrimary else NssPrimary.copy(alpha = 0.35f))
+                .clickable(enabled = enabled, onClick = onDeploy)
+                .padding(vertical = 8.dp),
+            color = NssOnPhoto,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }

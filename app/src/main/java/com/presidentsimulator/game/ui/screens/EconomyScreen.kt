@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -48,12 +55,15 @@ import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
-import com.presidentsimulator.game.ui.components.NssMinistryBanner
 import com.presidentsimulator.game.ui.components.NssProgressBar
+import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.NssSectorBarColors
+import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssSectorCard
 import com.presidentsimulator.game.ui.components.NssStripPhotoCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.formatMa2Money
+import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.GameIcons
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssBorder
@@ -61,6 +71,7 @@ import com.presidentsimulator.game.ui.theme.NssCard
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
+import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.theme.NssSecondary
@@ -78,6 +89,7 @@ private data class SectorModel(
     val employment: Float,
     val growth: Float,
     val level: Int,
+    val xp: Int,
     val gradient: List<Color>,
     val imageUrl: String,
 )
@@ -103,15 +115,15 @@ fun EconomyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(NssBackground),
     ) {
-        NssMinistryBanner(
-            ministryLabel = "ECONOMY",
+        NssScreenHeader(
+            title = "Economy",
             imageUrl = NssCardImages.BANNER_ECONOMY,
             statPills = listOf(
-                "GDP ${formatMa2Money(gdp)}",
-                "Growth +${(state.netIncome.coerceAtLeast(0) * 100 / gdp.coerceAtLeast(1)).coerceAtMost(99)}%",
-                "Inflation 3.7%",
+                "GDP" to formatMa2Money(gdp),
+                "Growth" to "+${(state.netIncome.coerceAtLeast(0) * 100 / gdp.coerceAtLeast(1)).coerceAtMost(99)}%",
+                "Revenue" to formatMa2Money(gdp / 12),
             ),
             gradientColors = NssGradients.Economy,
         )
@@ -137,12 +149,16 @@ fun EconomyScreen(
 
 @Composable
 private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NssCompactKpi("Total GDP", formatMa2Money(gdp), "▲ YOY", true, Modifier.weight(1f))
-        NssCompactKpi("Net / mo", formatMa2Money(state.netIncome), if (state.netIncome >= 0) "▲ surplus" else "▼ deficit", state.netIncome >= 0, Modifier.weight(1f))
-        NssCompactKpi("Factories", state.economy.factories.toString(), "Industrial base", true, Modifier.weight(1f))
-        NssCompactKpi("Approval", "${state.vitals.approval.roundToInt()}%", "Public support", state.vitals.approval >= 50f, Modifier.weight(1f))
-    }
+    GdpBreakdownCard(sectors = sectors)
+
+    Text(
+        text = "SECTOR MANAGEMENT",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Black,
+        color = NssPrimary,
+        letterSpacing = 3.sp,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+    )
 
     sectors.chunked(2).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,11 +171,74 @@ private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) 
                     level = sector.level,
                     headerGradient = sector.gradient,
                     imageUrl = sector.imageUrl,
+                    xpPercent = sector.xp,
+                    revenueLabel = "${formatMa2Money((gdp * sector.gdpShare / 100f).toLong())}/yr",
                     onInvest = { },
                     modifier = Modifier.weight(1f),
                 )
             }
             if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun GdpBreakdownCard(sectors: List<SectorModel>) {
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(NssCardShape)
+            .background(NssGameCard)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("TOTAL GDP BREAKDOWN", fontSize = 11.sp, fontWeight = FontWeight.Black, color = NssMutedForeground, letterSpacing = 1.sp)
+            Text("🏆 ${sectors.size} Active Sectors", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NssAccent)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(16.dp)
+                .clip(RoundedCornerShape(50)),
+            horizontalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            sectors.forEachIndexed { index, sector ->
+                val animShare by animateFloatAsState(
+                    targetValue = if (started) sector.gdpShare.coerceAtLeast(0.5f) else 0f,
+                    animationSpec = tween(1000, easing = FastOutSlowInEasing),
+                    label = "gdpSeg$index",
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(animShare.coerceAtLeast(0.01f))
+                        .background(NssSectorBarColors[index % NssSectorBarColors.size]),
+                )
+            }
+        }
+        sectors.forEachIndexed { index, sector ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(NssSectorBarColors[index % NssSectorBarColors.size]),
+                )
+                Text(
+                    text = "${sector.name} ${"%.1f".format(sector.gdpShare)}%",
+                    fontSize = 9.sp,
+                    color = NssMutedForeground,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }
@@ -310,13 +389,13 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
     val production = state.production
     val total = (economy.factories + economy.farms + production.powerPlants + production.mines + 1).toFloat()
     return listOf(
-        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, NssGradients.Emerald, NssCardImages.SERVICES),
-        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), NssGradients.Sky, NssCardImages.INDUSTRY),
-        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, NssGradients.Indigo, NssCardImages.MANUFACTURING),
-        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), NssGradients.Violet, NssCardImages.TECHNOLOGY),
-        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), NssGradients.Amber, NssCardImages.AGRICULTURE),
-        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), NssGradients.Orange, NssCardImages.ENERGY),
-        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, NssGradients.Red, NssCardImages.DEFENSE_IND),
+        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, 72, NssGradients.Emerald, NssCardImages.SERVICES),
+        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), 45, NssGradients.Sky, NssCardImages.INDUSTRY),
+        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, 28, NssGradients.Indigo, NssCardImages.MANUFACTURING),
+        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), 88, NssGradients.Violet, NssCardImages.TECHNOLOGY),
+        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), 12, NssGradients.Amber, NssCardImages.AGRICULTURE),
+        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), 33, NssGradients.Orange, NssCardImages.ENERGY),
+        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, 61, NssGradients.Red, NssCardImages.DEFENSE_IND),
     )
 }
 

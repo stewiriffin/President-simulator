@@ -1,33 +1,39 @@
 package com.presidentsimulator.game.ui.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsMartialArts
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -38,12 +44,11 @@ import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
-import com.presidentsimulator.game.viewmodel.AnalyticsSaveViewModel
 import com.presidentsimulator.game.viewmodel.toApprovalString
 import kotlin.math.roundToInt
 
 /**
- * Nation State Simulator top command bar — navy HUD with vitals strip and End Turn.
+ * Gamified v3 top HUD — compact vitals, alert pill, pulsing End Turn CTA.
  */
 @Composable
 fun GlobalHud(
@@ -56,160 +61,139 @@ fun GlobalHud(
     onToggleTimeSpeed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gdp = AnalyticsSaveViewModel().calculateGDP(state)
     val stability = (100f - state.internalSecurity.instabilityScore).coerceIn(0f, 100f)
     val milPower = state.effectiveCombatStrength.roundToInt()
-    val history = state.analytics.history
+    val treasuryWarn = state.netIncome < 0
+    val stabilityWarn = stability < 60f
 
     val vitals = listOf(
-        makeHudVital(Icons.Default.AttachMoney, "GDP", formatCompactMoney(gdp), trendFromHistory(history.map { it.gdp.toFloat() })),
-        makeHudVital(Icons.Default.Shield, "Stability", "${stability.roundToInt()}%", trendFromHistory(listOf(stability))),
-        makeHudVital(Icons.Default.SportsMartialArts, "Military", milPower.toString(), trendFromHistory(listOf(milPower.toFloat()))),
-        makeHudVital(Icons.Default.AccountBalance, "Treasury", formatCompactMoney(state.vitals.budget), trendFromHistory(history.map { it.budget.toFloat() })),
-        makeHudVital(Icons.Default.Groups, "Approval", state.vitals.approval.toApprovalString(), trendFromHistory(history.map { it.approval })),
+        HudChip(Icons.Default.AttachMoney, formatCompactMoney(state.vitals.budget), treasuryWarn),
+        HudChip(Icons.Default.Shield, "${stability.roundToInt()}%", stabilityWarn),
+        HudChip(Icons.Default.SportsMartialArts, formatCompactMil(milPower), warn = false),
+        HudChip(Icons.Default.Groups, state.vitals.approval.toApprovalString(), state.vitals.approval < 50f),
+    )
+
+    val pulseTransition = rememberInfiniteTransition(label = "endTurnPulse")
+    val endTurnScale by pulseTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(1250, easing = LinearEasing), RepeatMode.Reverse),
+        label = "endTurnScale",
     )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(56.dp)
             .background(NssPrimary),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(NssOnPhoto.copy(alpha = 0.1f)),
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(NssAccent),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Default.AccountBalance, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(16.dp))
             }
             Column {
+                Text("VELTRIA", color = NssOnPhoto, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 1.sp)
                 Text(
-                    text = "VELTRIA",
-                    color = NssOnPhoto,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    letterSpacing = 1.sp,
-                )
-                Text(
-                    text = "${state.year} · Quarter ${((state.month - 1) / 3) + 1}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = NssOnPhoto.copy(alpha = 0.6f),
+                    text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
+                    fontSize = 9.sp,
+                    color = NssOnPhoto.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }
 
-        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(NssOnPhoto.copy(alpha = 0.2f)))
-
         Row(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            vitals.forEach { vital ->
+            vitals.forEach { chip ->
                 Row(
                     modifier = Modifier
-                        .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(NssOnPhoto.copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .background(if (chip.warn) Color(0x33F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(vital.icon, contentDescription = null, tint = NssOnPhoto.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
-                    Column {
-                        Text(text = vital.label, fontSize = 8.sp, color = NssOnPhoto.copy(alpha = 0.6f))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = vital.value,
-                                color = vital.trendColor,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = if (vital.trendPositive) " ▲" else " ▼",
-                                fontSize = 8.sp,
-                                color = vital.trendColor,
-                            )
-                        }
-                    }
+                    Icon(
+                        chip.icon,
+                        contentDescription = null,
+                        tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Text(
+                        text = chip.value,
+                        color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            if (alertCount > 0) {
+                val alertPulse by pulseTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.35f,
+                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                    label = "alertPulse",
+                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x33EF4444))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .scale(alertPulse)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFFF87171)),
+                    )
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(12.dp))
+                    Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
 
-        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(NssOnPhoto.copy(alpha = 0.2f)))
-
         Row(
             modifier = Modifier
-                .fillMaxHeight()
-                .padding(horizontal = 12.dp),
+                .padding(end = 12.dp)
+                .scale(if (nextTurnEnabled) endTurnScale else 1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.4f))
+                .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(Color(0xFFF87171)))
-            Text(
-                text = "$alertCount Alerts",
-                color = NssOnPhoto.copy(alpha = 0.85f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "End Turn ▶",
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.4f))
-                    .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                color = NssOnPhoto,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(14.dp))
+            Text("End Turn", color = NssOnPhoto, fontSize = 11.sp, fontWeight = FontWeight.Black)
         }
     }
 }
 
-private data class HudVital(
-    val icon: ImageVector,
-    val label: String,
-    val value: String,
-    val trendPositive: Boolean,
-) {
-    val trendColor: Color
-        get() = if (trendPositive) Color(0xFF86EFAC) else Color(0xFFFCD34D)
-}
+private data class HudChip(val icon: ImageVector, val value: String, val warn: Boolean)
 
-private fun makeHudVital(icon: ImageVector, label: String, value: String, trend: TrendDelta): HudVital =
-    HudVital(icon, label, value, trend.positive)
-
-private data class TrendDelta(
-    val positive: Boolean,
-    val tag: String,
-)
-
-private fun trendFromHistory(values: List<Float>): TrendDelta {
-    if (values.size < 2) {
-        return TrendDelta(positive = true, tag = "—")
-    }
-    val delta = values.last() - values.first()
-    val positive = delta >= 0
-    val tag = when {
-        delta == 0f -> "—"
-        kotlin.math.abs(delta) >= 100 -> "${if (positive) "+" else ""}${formatCompactNumber(delta.toLong())}"
-        else -> "${if (positive) "+" else ""}${"%.1f".format(delta)}"
-    }
-    return TrendDelta(positive = positive, tag = tag)
+private fun formatCompactMil(value: Int): String = when {
+    value >= 1_000 -> "${"%.1f".format(value / 1000f)}K"
+    else -> value.toString()
 }
 
 fun formatCompactMoney(amount: Long): String {
@@ -223,15 +207,6 @@ fun formatCompactMoney(amount: Long): String {
     }
 }
 
-private fun formatCompactNumber(value: Long): String {
-    val abs = kotlin.math.abs(value)
-    return when {
-        abs >= 1_000_000_000L -> "${"%.1f".format(abs / 1_000_000_000.0)}B"
-        abs >= 1_000_000L -> "${"%.1f".format(abs / 1_000_000.0)}M"
-        else -> abs.toString()
-    }
-}
-
 fun collectAlertCount(state: GameState): Int {
     var count = 0
     if (state.diplomacy.activeWar != null) count++
@@ -241,7 +216,7 @@ fun collectAlertCount(state: GameState): Int {
     if (state.production.energyShortage) count++
     if (state.governance.activeResolution != null) count++
     if (state.gameOver.isGameOver) count++
-    return count.coerceAtLeast(if (count == 0) 1 else count)
+    return count
 }
 
 fun collectAlerts(state: GameState): List<Pair<String, String>> {

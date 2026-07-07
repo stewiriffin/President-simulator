@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 val NssBackground = Color(0xFFF0E8D4)
 val NssForeground = Color(0xFF1C1810)
 val NssCard = Color(0xFFFFFDF5)
+/** Gamified v3 card surface — clean white on parchment background */
+val NssGameCard = Color(0xFFFFFFFF)
 val NssPrimary = Color(0xFF1E3A6E)
 val NssSecondary = Color(0xFFE6DDC8)
 val NssMuted = Color(0xFFEDE4D0)

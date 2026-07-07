@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +37,7 @@ import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
-import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.NssNationCard
 import com.presidentsimulator.game.ui.components.NssNationColors
 import com.presidentsimulator.game.ui.components.NssProgressBar
@@ -44,7 +46,13 @@ import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.prgColor
 import com.presidentsimulator.game.ui.components.relationBarColor
 import com.presidentsimulator.game.ui.components.relationTextColor
-import com.presidentsimulator.game.ui.theme.NssBorder
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
+import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssPrimary
@@ -69,15 +77,15 @@ fun DiplomacyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(NssBackground),
     ) {
-        NssMinistryBanner(
-            ministryLabel = "FOREIGN AFFAIRS",
+        NssScreenHeader(
+            title = "Foreign Affairs",
             imageUrl = NssCardImages.BANNER_FOREIGN,
             statPills = listOf(
-                "Allies ${state.diplomacy.rivals.count { it.relationshipScore >= 70 }}",
-                "Treaties ${state.diplomacy.rivals.count { it.hasTradeTreaty || it.hasNonAggressionPact }} Active",
-                "Threats ${state.diplomacy.rivals.count { it.relationshipScore < 20 }} Critical",
+                "Allies" to "${state.diplomacy.rivals.count { it.relationshipScore >= 70 }}",
+                "Treaties" to "${state.diplomacy.rivals.count { it.hasTradeTreaty || it.hasNonAggressionPact }}",
+                "Crises" to "${state.diplomacy.rivals.count { it.relationshipScore < 20 }}",
             ),
             gradientColors = NssGradients.Foreign,
         )
@@ -105,9 +113,11 @@ fun DiplomacyScreen(
         ) {
             when (selectedTab) {
                 "RELATIONS" -> {
-                    state.diplomacy.rivals.chunked(2).forEach { row ->
+                    RelationsLegend()
+                    state.diplomacy.rivals.chunked(2).forEachIndexed { rowIndex, row ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { rival ->
+                            row.forEachIndexed { colIndex, rival ->
+                                val cardIndex = rowIndex * 2 + colIndex
                                 NssNationCard(
                                     nationName = rival.name,
                                     flagEmoji = rivalFlagEmoji(rival),
@@ -117,6 +127,8 @@ fun DiplomacyScreen(
                                     tradeLabel = if (rival.hasTradeTreaty) "OPEN" else "STANDARD",
                                     militaryLabel = if (activeWar?.targetCountryId == rival.id) "ACTIVE CONFLICT" else rival.stance.label.uppercase(),
                                     headerColor = rivalHeaderColor(rival),
+                                    imageUrl = NssCardImages.nationCardImage(cardIndex),
+                                    headerGradient = NssGradients.Foreign,
                                     isHostile = rival.relationshipScore < 20 || activeWar?.targetCountryId == rival.id,
                                     onAction = { selectedRivalId = if (selectedRivalId == rival.id) null else rival.id },
                                     modifier = Modifier.weight(1f),
@@ -194,6 +206,34 @@ fun DiplomacyScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RelationsLegend() {
+    val items = listOf(
+        "ALLY" to Color(0xFF22C55E),
+        "PARTNER" to Color(0xFF3B82F6),
+        "NEUTRAL" to Color(0xFFA8A29E),
+        "RIVAL" to Color(0xFFF97316),
+        "HOSTILE" to Color(0xFFDC2626),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(NssGameCard)
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("RELATIONS:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NssMutedForeground, letterSpacing = 1.sp)
+        items.forEach { (label, color) ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+                Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = NssMutedForeground)
             }
         }
     }

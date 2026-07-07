@@ -1,7 +1,7 @@
 package com.presidentsimulator.game.ui.components
 
 /**
- * Unsplash image URLs from the Nation State Simulator UI design reference (v2).
+ * Unsplash image URLs from the Nation State Simulator UI design reference (v3).
  * Loaded at runtime via Coil; gradients are used as offline fallback.
  */
 object NssCardImages {
@@ -25,14 +25,39 @@ object NssCardImages {
     const val BOMBER = "https://images.unsplash.com/photo-1536714303373-a2114b28b6b7?w=500&h=220&fit=crop&auto=format"
     const val DRONE = "https://images.unsplash.com/photo-1514598800938-f7125ea1aa1c?w=500&h=220&fit=crop&auto=format"
 
-    const val BANNER_ECONOMY = "https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1400&h=200&fit=crop&auto=format"
-    const val BANNER_DEFENSE = "https://images.unsplash.com/photo-1678818048682-44b5cc5375a1?w=1400&h=200&fit=crop&auto=format"
-    const val BANNER_FOREIGN = "https://images.unsplash.com/photo-1770308144171-77831cf9130a?w=1400&h=200&fit=crop&auto=format"
-    const val MAP = "https://images.unsplash.com/photo-1543191879-742cb35a3a4e?w=1200&h=400&fit=crop&auto=format"
+    const val BANNER_ECONOMY = "https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1400&h=300&fit=crop&auto=format"
+    const val BANNER_DEFENSE = "https://images.unsplash.com/photo-1678818048682-44b5cc5375a1?w=1400&h=300&fit=crop&auto=format"
+    const val BANNER_FOREIGN = "https://images.unsplash.com/photo-1770308144171-77831cf9130a?w=1400&h=300&fit=crop&auto=format"
+    const val MAP = "https://images.unsplash.com/photo-1543191879-742cb35a3a4e?w=1400&h=500&fit=crop&auto=format"
     const val PARLIAMENT = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=500&h=240&fit=crop&auto=format"
 
     const val BANNER_DOMESTIC = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_INTELLIGENCE = "https://images.unsplash.com/photo-1737502483541-92e91801cfaf?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_SCIENCE = "https://images.unsplash.com/photo-1651340608985-d25cc73156e8?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_COMMAND = "https://images.unsplash.com/photo-1515868769-ad822a0c67e9?w=1400&h=200&fit=crop&auto=format"
+
+    private val nationCardRotation = listOf(BANNER_FOREIGN, MAP, PARLIAMENT, BANNER_DEFENSE, DESTROYER, BANNER_ECONOMY)
+
+    fun nationCardImage(index: Int): String = nationCardRotation[index.mod(nationCardRotation.size)]
+
+    fun eventImage(eventId: String): String = when {
+        eventId.contains("strike", ignoreCase = true) -> INDUSTRY
+        eventId.contains("boom", ignoreCase = true) -> ENERGY
+        eventId.contains("crash", ignoreCase = true) || eventId.contains("market", ignoreCase = true) -> BANNER_ECONOMY
+        eventId.contains("epidemic", ignoreCase = true) -> SERVICES
+        eventId.contains("border", ignoreCase = true) || eventId.contains("war", ignoreCase = true) -> INFANTRY
+        else -> PARLIAMENT
+    }
+
+    fun techCategoryImage(category: com.presidentsimulator.game.data.TechCategory): String = when (category) {
+        com.presidentsimulator.game.data.TechCategory.ECONOMY -> TECHNOLOGY
+        com.presidentsimulator.game.data.TechCategory.MILITARY -> DEFENSE_IND
+        com.presidentsimulator.game.data.TechCategory.SOCIETY -> SERVICES
+    }
+
+    fun lawCategoryImage(category: com.presidentsimulator.game.data.LawCategory): String = when (category) {
+        com.presidentsimulator.game.data.LawCategory.MILITARY -> BANNER_DEFENSE
+        com.presidentsimulator.game.data.LawCategory.ECONOMIC -> BANNER_ECONOMY
+        com.presidentsimulator.game.data.LawCategory.SOCIAL -> PARLIAMENT
+    }
 }

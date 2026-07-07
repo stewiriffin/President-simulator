@@ -23,7 +23,11 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +52,7 @@ import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.ui.theme.NssCard
 import com.presidentsimulator.game.ui.theme.NssDestructive
 import com.presidentsimulator.game.ui.theme.NssEmerald
+import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssIndigo
 import com.presidentsimulator.game.ui.theme.NssMuted
@@ -61,7 +66,186 @@ import com.presidentsimulator.game.ui.theme.NssViolet
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.StarkWhite
 
-val NssCardShape = RoundedCornerShape(12.dp)
+val NssCardShape = RoundedCornerShape(16.dp)
+
+/** Sector colors for GDP breakdown bar (v3 reference). */
+val NssSectorBarColors = listOf(
+    Color(0xFF3B82F6),
+    Color(0xFF16A34A),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+    Color(0xFFD97706),
+    Color(0xFFF97316),
+    Color(0xFFDC2626),
+)
+
+@Composable
+fun NssGameBar(
+    percent: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    thick: Boolean = false,
+    animate: Boolean = true,
+    animationDelayMs: Int = 0,
+) {
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(animate) {
+        if (animate) {
+            kotlinx.coroutines.delay(animationDelayMs.toLong())
+            started = true
+        } else {
+            started = true
+        }
+    }
+    val animatedPct by animateFloatAsState(
+        targetValue = if (started) percent.coerceIn(0f, 100f) else 0f,
+        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+        label = "gameBar",
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (thick) 12.dp else 8.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xFFF5F5F4)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(animatedPct / 100f)
+                .clip(RoundedCornerShape(50))
+                .background(color),
+        )
+    }
+}
+
+@Composable
+fun NssXpBar(
+    percent: Float,
+    modifier: Modifier = Modifier,
+    animationDelayMs: Int = 0,
+) {
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(animationDelayMs.toLong())
+        started = true
+    }
+    val animatedPct by animateFloatAsState(
+        targetValue = if (started) percent.coerceIn(0f, 100f) else 0f,
+        animationSpec = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
+        label = "xpBar",
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xFFFEF3C7)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(animatedPct / 100f)
+                .clip(RoundedCornerShape(50))
+                .background(
+                    Brush.horizontalGradient(listOf(NssAccent, Color(0xFFFBBF24))),
+                ),
+        )
+    }
+}
+
+@Composable
+fun NssLvBadge(level: Int, modifier: Modifier = Modifier) {
+    Text(
+        text = "LV.$level",
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(NssPrimary)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        color = NssOnPhoto,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.sp,
+    )
+}
+
+@Composable
+fun NssScreenHeader(
+    title: String,
+    imageUrl: String?,
+    statPills: List<Pair<String, String>>,
+    gradientColors: List<Color> = listOf(NssPrimary, NssPrimary.copy(alpha = 0.7f)),
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(176.dp),
+    ) {
+        NssPhotoHeader(
+            imageUrl = imageUrl,
+            fallbackGradient = gradientColors,
+            modifier = Modifier.matchParentSize(),
+            scrimTopToBottom = listOf(
+                NssPrimary.copy(alpha = 0.55f),
+                Color.Transparent,
+                NssPrimary.copy(alpha = 0.72f),
+            ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(20.dp),
+        ) {
+            Text(
+                text = "MINISTRY OF",
+                style = MaterialTheme.typography.labelSmall,
+                color = NssOnPhoto.copy(alpha = 0.6f),
+                letterSpacing = 4.sp,
+            )
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.headlineSmall,
+                color = NssOnPhoto,
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                statPills.take(3).forEach { (label, value) ->
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NssOnPhoto.copy(alpha = 0.15f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(text = label, fontSize = 9.sp, color = NssOnPhoto.copy(alpha = 0.7f), fontWeight = FontWeight.SemiBold)
+                        Text(text = value, fontSize = 13.sp, color = NssOnPhoto, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NssPanel(
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(NssCardShape)
+            .then(
+                if (highlighted) Modifier.border(2.dp, NssAccent.copy(alpha = 0.4f), NssCardShape)
+                else Modifier,
+            )
+            .background(NssGameCard)
+            .padding(16.dp),
+        content = content,
+    )
+}
 
 @Composable
 fun NssCard(
@@ -318,7 +502,7 @@ fun NssStripPhotoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(headerHeight),
-            scrimTopToBottom = listOf(Color.Transparent, NssCard.copy(alpha = 0.85f)),
+            scrimTopToBottom = listOf(Color.Transparent, NssPrimary.copy(alpha = 0.65f)),
         )
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
@@ -333,6 +517,8 @@ fun NssSectorCard(
     level: Int,
     headerGradient: List<Color>,
     imageUrl: String? = null,
+    xpPercent: Int = (level * 20).coerceIn(10, 95),
+    revenueLabel: String? = null,
     onInvest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -340,8 +526,7 @@ fun NssSectorCard(
     Column(
         modifier = modifier
             .clip(NssCardShape)
-            .border(1.dp, NssBorder, NssCardShape)
-            .background(NssCard),
+            .background(NssGameCard),
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(128.dp)) {
             NssPhotoHeader(
@@ -349,6 +534,10 @@ fun NssSectorCard(
                 fallbackGradient = headerGradient,
                 modifier = Modifier.matchParentSize(),
                 scrimTopToBottom = CardHeaderBottomScrim,
+            )
+            NssLvBadge(
+                level = level,
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
             )
             Text(
                 text = "${if (growth >= 0) "▲" else "▼"} ${"%.1f".format(kotlin.math.abs(growth))}%",
@@ -366,7 +555,7 @@ fun NssSectorCard(
                 Text(
                     text = name,
                     color = NssOnPhoto,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Black,
                     fontSize = 14.sp,
                 )
                 NssStars(count = level)
@@ -378,25 +567,38 @@ fun NssSectorCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("GDP Share", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
+                Text("GDP Share", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground, fontWeight = FontWeight.Bold)
                 Text(
                     "${"%.1f".format(gdpShare)}%",
                     color = NssForeground,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
                 )
             }
-            NssProgressBar(percent = gdpShare, color = NssPrimary, thick = true)
-            Text(
-                text = "Investment Level $level/5",
-                style = MaterialTheme.typography.labelSmall,
-                color = NssMutedForeground,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("XP to Level ${level + 1}", fontSize = 9.sp, color = NssMutedForeground, fontWeight = FontWeight.Bold)
+                Text("$xpPercent%", fontSize = 9.sp, color = NssMutedForeground, fontWeight = FontWeight.Bold)
+            }
+            NssXpBar(percent = xpPercent.toFloat())
+            if (revenueLabel != null) {
+                Text(
+                    text = "💰 $revenueLabel",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = NssMutedForeground,
+                )
+            }
         }
         Text(
             text = if (invested) "✓ Investing" else "⬆ Invest",
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .clickable {
                     invested = !invested
                     onInvest()
@@ -404,8 +606,8 @@ fun NssSectorCard(
                 .background(if (invested) NssEmerald else NssAccent)
                 .padding(vertical = 10.dp),
             color = NssOnPhoto,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center,
         )
     }
@@ -638,8 +840,11 @@ fun NssNationCard(
     headerColor: Color,
     isHostile: Boolean,
     onAction: () -> Unit,
+    imageUrl: String? = null,
+    headerGradient: List<Color>? = null,
     modifier: Modifier = Modifier,
 ) {
+    val gradient = headerGradient ?: listOf(headerColor, headerColor.copy(alpha = 0.65f))
     Column(
         modifier = modifier
             .border(
@@ -652,17 +857,21 @@ fun NssNationCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp)
-                .background(headerColor),
+                .height(100.dp),
             contentAlignment = Alignment.Center,
         ) {
+            NssPhotoHeader(
+                imageUrl = imageUrl,
+                fallbackGradient = gradient,
+                modifier = Modifier.matchParentSize(),
+                scrimTopToBottom = CardHeaderBottomScrim,
+            )
             Text(text = flagEmoji, fontSize = 48.sp)
-            Box(modifier = Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, NssCard.copy(alpha = 0.8f)))))
             NssBadge(label = status, large = true, modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
             NssBadge(label = threat, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             Text(
                 text = nationName,
-                color = NssForeground,
+                color = NssOnPhoto,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
             )

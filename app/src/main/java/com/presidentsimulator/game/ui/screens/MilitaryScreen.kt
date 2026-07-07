@@ -3,6 +3,9 @@ package com.presidentsimulator.game.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,11 +45,12 @@ import com.presidentsimulator.game.ui.components.NssBranchHeader
 import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
-import com.presidentsimulator.game.ui.components.NssMinistryBanner
+import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.NssRecruitCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.NssUnitCard
 import com.presidentsimulator.game.ui.components.formatMa2Money
+import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssAccent
 import androidx.compose.material3.MaterialTheme
 import com.presidentsimulator.game.ui.theme.NssEmerald
@@ -81,15 +87,15 @@ fun MilitaryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(NssBackground),
     ) {
-        NssMinistryBanner(
-            ministryLabel = "DEFENSE",
+        NssScreenHeader(
+            title = "Defense",
             imageUrl = NssCardImages.BANNER_DEFENSE,
             statPills = listOf(
-                "Power ${state.effectiveCombatStrength.roundToInt()} pts",
-                "Personnel ${military.personnel.toArmyString()}",
-                "Readiness ${military.morale.roundToInt()}%",
+                "Power" to "${state.effectiveCombatStrength.roundToInt()}",
+                "Personnel" to military.personnel.toArmyString(),
+                "Readiness" to "${military.morale.roundToInt()}%",
             ),
             gradientColors = NssGradients.Defense,
         )
@@ -126,59 +132,91 @@ fun MilitaryScreen(
 
 @Composable
 private fun ForcesTab(state: GameState) {
+    var branch by remember { mutableStateOf("ARMY") }
     val military = state.military
     val armyUnits = listOf(
-        ForceUnit("Infantry Corps", military.personnel.toInt().coerceAtMost(999), military.morale.roundToInt(), "COMBAT READY", NssCardImages.INFANTRY),
-        ForceUnit("Armored Brigade", military.tanks, 88, "COMBAT READY", NssCardImages.ARMORED),
+        ForceUnit("Infantry Corps", military.personnel.toInt().coerceAtMost(999), military.morale.roundToInt(), "READY", NssCardImages.INFANTRY),
+        ForceUnit("Armored Brigade", military.tanks, 88, "READY", NssCardImages.ARMORED),
         ForceUnit("Artillery Regiment", (military.tanks / 2).coerceAtLeast(1), 91, "TRAINING", NssCardImages.ARTILLERY),
-        ForceUnit("Special Ops", (military.personnel / 50).coerceAtLeast(1).toInt(), 96, "ACTIVE OPS", NssCardImages.SPECIAL_OPS),
+        ForceUnit("Special Ops", (military.personnel / 50).coerceAtLeast(1).toInt(), 96, "READY", NssCardImages.SPECIAL_OPS),
     )
     val navyUnits = listOf(
         ForceUnit("Destroyer", military.ships.coerceAtMost(20), 82, "PATROL", NssCardImages.DESTROYER),
         ForceUnit("Frigate", (military.ships * 1.5).roundToInt(), 79, "PATROL", NssCardImages.FRIGATE),
-        ForceUnit("Submarine", military.ships.coerceAtMost(8), 95, "COMBAT READY", NssCardImages.SUBMARINE),
-        ForceUnit("Carrier Group", military.ships.coerceAtMost(2), 90, "DEPLOYED", NssCardImages.CARRIER),
+        ForceUnit("Submarine", military.ships.coerceAtMost(8), 95, "READY", NssCardImages.SUBMARINE),
+        ForceUnit("Carrier Group", military.ships.coerceAtMost(2), 90, "REFIT", NssCardImages.CARRIER),
     )
     val airUnits = listOf(
-        ForceUnit("Fighter Squadron", military.jets, 91, "COMBAT READY", NssCardImages.FIGHTER),
+        ForceUnit("Fighter Squadron", military.jets, 91, "READY", NssCardImages.FIGHTER),
         ForceUnit("Bomber Wing", (military.jets / 3).coerceAtLeast(1), 76, "TRAINING", NssCardImages.BOMBER),
-        ForceUnit("Drone Fleet", (military.jets / 2).coerceAtLeast(1), 98, "ACTIVE OPS", NssCardImages.DRONE),
+        ForceUnit("Drone Fleet", (military.jets / 2).coerceAtLeast(1), 98, "ACTIVE", NssCardImages.DRONE),
+    )
+    val branches = listOf(
+        Triple("ARMY", armyUnits.sumOf { it.count }, NssEmerald to Icons.Default.Security),
+        Triple("NAVY", navyUnits.sumOf { it.count }, NssSky to Icons.Default.Anchor),
+        Triple("AIR", airUnits.sumOf { it.count }, NssViolet to Icons.Default.AirplanemodeActive),
+    )
+    val activeUnits = when (branch) {
+        "NAVY" -> navyUnits
+        "AIR" -> airUnits
+        else -> armyUnits
+    }
+    val activeGradient = when (branch) {
+        "NAVY" -> NssGradients.Sky
+        "AIR" -> NssGradients.Violet
+        else -> NssGradients.Emerald
+    }
+    val activeAccent = when (branch) {
+        "NAVY" -> NssSky
+        "AIR" -> NssViolet
+        else -> NssEmerald
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        branches.forEach { (name, count, colorIcon) ->
+            val (accent, icon) = colorIcon
+            val selected = branch == name
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (selected) accent else com.presidentsimulator.game.ui.theme.NssGameCard)
+                    .clickable { branch = name }
+                    .padding(14.dp),
+            ) {
+                Icon(icon, contentDescription = null, tint = if (selected) com.presidentsimulator.game.ui.theme.NssOnPhoto else com.presidentsimulator.game.ui.theme.NssMutedForeground, modifier = Modifier.size(20.dp))
+                Text(name, fontWeight = FontWeight.Black, fontSize = 13.sp, color = if (selected) com.presidentsimulator.game.ui.theme.NssOnPhoto else com.presidentsimulator.game.ui.theme.NssForeground, modifier = Modifier.padding(top = 6.dp))
+                Text("$count units", fontSize = 10.sp, color = if (selected) com.presidentsimulator.game.ui.theme.NssOnPhoto.copy(alpha = 0.7f) else com.presidentsimulator.game.ui.theme.NssMutedForeground)
+            }
+        }
+    }
+
+    Text(
+        text = "$branch UNITS",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Black,
+        color = NssPrimary,
+        letterSpacing = 3.sp,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
     )
 
-    BranchSection("ARMY", armyUnits.sumOf { it.count }, NssEmerald, Icons.Default.Security, NssGradients.Emerald, armyUnits)
-    BranchSection("NAVY", navyUnits.sumOf { it.count }, NssSky, Icons.Default.Anchor, NssGradients.Sky, navyUnits)
-    BranchSection("AIR", airUnits.sumOf { it.count }, NssViolet, Icons.Default.AirplanemodeActive, NssGradients.Violet, airUnits)
-}
-
-@Composable
-private fun BranchSection(
-    branch: String,
-    unitCount: Int,
-    accent: Color,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    gradient: List<Color>,
-    units: List<ForceUnit>,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        NssBranchHeader(branch = branch, unitCount = unitCount, accentColor = accent, icon = icon)
-        units.chunked(2).forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { unit ->
-                    NssUnitCard(
-                        unitName = unit.name,
-                        branch = branch,
-                        count = unit.count,
-                        strength = unit.strength,
-                        status = unit.status,
-                        maintLabel = "$${"%.1f".format((unit.count * 0.2).coerceAtLeast(0.1))}B/yr",
-                        headerGradient = gradient,
-                        accentColor = accent,
-                        imageUrl = unit.imageUrl,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+    activeUnits.chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { unit ->
+                NssUnitCard(
+                    unitName = unit.name,
+                    branch = branch,
+                    count = unit.count,
+                    strength = unit.strength,
+                    status = unit.status,
+                    maintLabel = "$${"%.1f".format((unit.count * 0.2).coerceAtLeast(0.1))}B/yr",
+                    headerGradient = activeGradient,
+                    accentColor = activeAccent,
+                    imageUrl = unit.imageUrl,
+                    modifier = Modifier.weight(1f),
+                )
             }
+            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
