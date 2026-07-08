@@ -45,25 +45,13 @@ import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.screens.DiplomacyScreen
 import com.presidentsimulator.game.ui.screens.EconomyScreen
-import com.presidentsimulator.game.ui.screens.LawsSocietyScreen
+import com.presidentsimulator.game.ui.screens.LawsScreen
 import com.presidentsimulator.game.ui.screens.MainDashboardScreen
 import com.presidentsimulator.game.ui.screens.MilitaryScreen
 import com.presidentsimulator.game.ui.screens.ScienceScreen
-import com.presidentsimulator.game.ui.screens.SecretServiceScreen
+import com.presidentsimulator.game.ui.screens.SecurityScreen
 import com.presidentsimulator.game.ui.screens.SettingsAudioScreen
 import com.presidentsimulator.game.viewmodel.GameViewModel
-
-sealed class GameDestination(val route: String, val title: String) {
-    data object Dashboard : GameDestination("dashboard", "Command Center")
-    data object Economy : GameDestination("economy", "Economy")
-    data object Military : GameDestination("military", "Defense")
-    data object Diplomacy : GameDestination("diplomacy", "Foreign Affairs")
-    data object SecretService : GameDestination("secret_service", "Intelligence")
-    data object Science : GameDestination("science", "Science")
-    data object LawsSociety : GameDestination("laws_society", "Domestic Policy")
-    data object Governance : GameDestination("governance", "United Nations")
-    data object AudioSettings : GameDestination("audio_settings", "Settings")
-}
 
 @Composable
 fun GameNavigation(
@@ -192,13 +180,13 @@ fun GameNavigation(
                 DiplomacyScreen(state = state, viewModel = viewModel)
             }
             composable(GameDestination.SecretService.route) {
-                SecretServiceScreen(state = state, viewModel = viewModel)
+                SecurityScreen(state = state, viewModel = viewModel)
             }
             composable(GameDestination.Science.route) {
                 ScienceScreen(viewModel = viewModel)
             }
             composable(GameDestination.LawsSociety.route) {
-                LawsSocietyScreen(viewModel = viewModel)
+                LawsScreen(viewModel = viewModel)
             }
             composable(GameDestination.Governance.route) {
                 GovernanceUNScreen(state = state, viewModel = viewModel)

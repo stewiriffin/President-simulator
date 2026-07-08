@@ -2,28 +2,27 @@ package com.presidentsimulator.game.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Nation State Simulator — warm parchment command-center palette (v2 reference)
-val NssBackground = Color(0xFFF0E8D4)
-val NssForeground = Color(0xFF1C1810)
-val NssCard = Color(0xFFFFFDF5)
-/** Gamified v3 card surface — clean white on parchment background */
+// Nation State Simulator — Modern Reference UI Palette
+val NssBackground = Color(0xFFF5F5F4) // stone-100
+val NssForeground = Color(0xFF292524) // stone-800
+val NssCard = Color(0xFFFFFFFF)       // white
 val NssGameCard = Color(0xFFFFFFFF)
-val NssPrimary = Color(0xFF1E3A6E)
-val NssSecondary = Color(0xFFE6DDC8)
-val NssMuted = Color(0xFFEDE4D0)
-val NssMutedForeground = Color(0xFF7A6F5A)
-val NssAccent = Color(0xFFC4882A)
-val NssBorder = Color(0xFFD4C8A8)
-val NssDestructive = Color(0xFFA52828)
+val NssPrimary = Color(0xFF1E3A6E)    // Navy
+val NssSecondary = Color(0xFFE7E5E4)  // stone-200
+val NssMuted = Color(0xFFF5F5F4)      // stone-100
+val NssMutedForeground = Color(0xFFA8A29E) // stone-400
+val NssAccent = Color(0xFFC4882A)     // Gold/Bronze
+val NssBorder = Color(0xFFE7E5E4)     // stone-200
+val NssDestructive = Color(0xFFDC2626) // red-600
 
-// Semantic values tuned for parchment surfaces
-val NssEmerald = Color(0xFF1D6940)
-val NssSky = Color(0xFF1E3A6E)
-val NssAmber = Color(0xFFC4882A)
-val NssRed = Color(0xFFA52828)
-val NssViolet = Color(0xFF6B4FA0)
-val NssIndigo = Color(0xFF1E3A6E)
-val NssOrange = Color(0xFFB45309)
+// Semantic values tuned for modern surfaces
+val NssEmerald = Color(0xFF16A34A)    // green-600
+val NssSky = Color(0xFF3B82F6)        // blue-500
+val NssAmber = Color(0xFFD97706)      // amber-600
+val NssRed = Color(0xFFDC2626)        // red-600
+val NssViolet = Color(0xFF7C3AED)     // violet-600
+val NssIndigo = Color(0xFF1E3A6E)     // navy
+val NssOrange = Color(0xFFEA580C)     // orange-600
 
 /** Text and overlays on photo headers and dark scrims */
 val NssOnPhoto = Color(0xFFFFFFFF)
@@ -56,8 +55,9 @@ val SlateOutline = NssBorder
 val StarkWhite = Color(0xFFFFFFFF)
 val NeutralGray = NssMutedForeground
 val CommandGold = NssAccent
-val ProfitGreen = Color(0xFF1D6940)
-val DeficitRed = Color(0xFFA52828)
-val WarningOrange = Color(0xFFC4882A)
+val ProfitGreen = NssEmerald
+val DeficitRed = NssRed
+val WarningOrange = NssAmber
 val InfoBlue = NssPrimary
-val CrisisCrimson = Color(0xFFA52828)
+val CrisisCrimson = NssDestructive
+

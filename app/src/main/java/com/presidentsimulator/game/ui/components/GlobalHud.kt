@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +46,7 @@ import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.viewmodel.toApprovalString
 import kotlin.math.roundToInt
+
 
 /**
  * Gamified v3 top HUD — compact vitals, alert pill, pulsing End Turn CTA.
@@ -81,110 +82,208 @@ fun GlobalHud(
         label = "endTurnScale",
     )
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .background(NssPrimary),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(
+                color = NssPrimary,
+                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+            )
+            .padding(bottom = 10.dp),
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(NssAccent),
-                contentAlignment = Alignment.Center,
+            // Brand
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(Icons.Default.AccountBalance, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(16.dp))
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(NssAccent, Color(0xFFB87333)),
+                            ),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.AccountBalance,
+                        contentDescription = null,
+                        tint = NssOnPhoto,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        text = "VELTRIA",
+                        color = NssOnPhoto,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp,
+                        letterSpacing = 2.sp,
+                    )
+                    Text(
+                        text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
+                        fontSize = 10.sp,
+                        color = NssOnPhoto.copy(alpha = 0.55f),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                    )
+                }
             }
-            Column {
-                Text("VELTRIA", color = NssOnPhoto, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 1.sp)
-                Text(
-                    text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
-                    fontSize = 9.sp,
-                    color = NssOnPhoto.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.SemiBold,
-                )
+
+            // Spacer
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+
+            // Vitals row (3 key metrics)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                vitals.take(3).forEach { chip ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (chip.warn) Color(0x40F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            chip.icon,
+                            contentDescription = null,
+                            tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                            modifier = Modifier.size(13.dp),
+                        )
+                        Text(
+                            text = chip.value,
+                            color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+                if (alertCount > 0) {
+                    val alertPulse by pulseTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 1.35f,
+                        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                        label = "alertPulse",
+                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0x40EF4444))
+                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .scale(alertPulse)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFFF87171)),
+                        )
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFCA5A5),
+                            modifier = Modifier.size(13.dp),
+                        )
+                        Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    }
+                }
             }
         }
 
+        // Bottom row: End Turn / Auto speed
         Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            vitals.forEach { chip ->
+            // Approval chip
+            val approvalChip = vitals.getOrNull(3)
+            if (approvalChip != null) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (chip.warn) Color(0x33F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (approvalChip.warn) Color(0x40F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
-                        chip.icon,
+                        approvalChip.icon,
                         contentDescription = null,
-                        tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
-                        modifier = Modifier.size(12.dp),
+                        tint = if (approvalChip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                        modifier = Modifier.size(13.dp),
                     )
                     Text(
-                        text = chip.value,
-                        color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
+                        text = approvalChip.value,
+                        color = if (approvalChip.warn) Color(0xFFFCD34D) else NssOnPhoto,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            if (alertCount > 0) {
-                val alertPulse by pulseTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.35f,
-                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-                    label = "alertPulse",
-                )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+
+            // Auto-speed button
+            if (timeSpeedEnabled) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0x33EF4444))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isAutoTicking) Color(0xFF374151) else NssOnPhoto.copy(alpha = 0.1f))
+                        .clickable(onClick = onToggleTimeSpeed)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .scale(alertPulse)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color(0xFFF87171)),
+                    Icon(
+                        Icons.Default.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = if (isAutoTicking) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.6f),
+                        modifier = Modifier.size(13.dp),
                     )
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(12.dp))
-                    Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = if (isAutoTicking) "AUTO" else "PAUSE",
+                        color = if (isAutoTicking) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                    )
                 }
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .padding(end = 12.dp)
-                .scale(if (nextTurnEnabled) endTurnScale else 1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.4f))
-                .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(14.dp))
-            Text("End Turn", color = NssOnPhoto, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            // End Turn CTA
+            Row(
+                modifier = Modifier
+                    .scale(if (nextTurnEnabled) endTurnScale else 1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.35f))
+                    .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(14.dp))
+                Text("End Turn", color = NssOnPhoto, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }

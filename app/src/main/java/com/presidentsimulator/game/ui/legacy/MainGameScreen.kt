@@ -1,4 +1,4 @@
-package com.presidentsimulator.game.ui
+package com.presidentsimulator.game.ui.legacy
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,6 +71,7 @@ import com.presidentsimulator.game.data.GameEvent
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.data.Ministry
+import com.presidentsimulator.game.ui.GovernanceUNScreen
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toApprovalString
 import com.presidentsimulator.game.viewmodel.toArmyString

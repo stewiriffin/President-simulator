@@ -69,20 +69,20 @@ const RECRUITS = [
 ];
 
 const NATIONS = [
-  { name: "Korathia",    flag: "🟦", status: "ALLY",    rel: 87, bg: "from-blue-400 to-blue-600",     threat: "LOW",      action: "Send Aid",   actionColor: "bg-blue-600"    },
-  { name: "Ozantia",    flag: "🟩", status: "PARTNER", rel: 72, bg: "from-emerald-400 to-green-600",  threat: "LOW",      action: "Trade Deal", actionColor: "bg-emerald-600" },
-  { name: "Nortegra",   flag: "🟪", status: "PARTNER", rel: 68, bg: "from-violet-400 to-purple-600",  threat: "LOW",      action: "Strengthen", actionColor: "bg-violet-600"  },
-  { name: "Sulvane",    flag: "🟨", status: "NEUTRAL", rel: 61, bg: "from-yellow-400 to-amber-500",   threat: "LOW",      action: "Engage",     actionColor: "bg-amber-500"   },
-  { name: "Meldova",    flag: "⬜", status: "NEUTRAL", rel: 54, bg: "from-slate-400 to-slate-600",    threat: "MEDIUM",   action: "Engage",     actionColor: "bg-slate-600"   },
-  { name: "Telmiran",   flag: "🟫", status: "NEUTRAL", rel: 44, bg: "from-stone-400 to-stone-600",    threat: "MEDIUM",   action: "Engage",     actionColor: "bg-stone-600"   },
-  { name: "Drexan",     flag: "🟧", status: "RIVAL",   rel: 23, bg: "from-orange-400 to-red-500",     threat: "HIGH",     action: "Warn",       actionColor: "bg-orange-600"  },
-  { name: "Veskovia",   flag: "🔴", status: "HOSTILE", rel: 8,  bg: "from-red-500 to-red-800",        threat: "CRITICAL", action: "⚔ Respond",  actionColor: "bg-red-700"     },
+  { name: "Korathia",    flag: <Globe className="w-full h-full text-blue-200" />, status: "ALLY",    rel: 87, bg: "from-blue-400 to-blue-600",     threat: "LOW",      action: "Send Aid",   actionColor: "bg-blue-600"    },
+  { name: "Ozantia",    flag: <Globe className="w-full h-full text-emerald-200" />, status: "PARTNER", rel: 72, bg: "from-emerald-400 to-green-600",  threat: "LOW",      action: "Trade Deal", actionColor: "bg-emerald-600" },
+  { name: "Nortegra",   flag: <Globe className="w-full h-full text-violet-200" />, status: "PARTNER", rel: 68, bg: "from-violet-400 to-purple-600",  threat: "LOW",      action: "Strengthen", actionColor: "bg-violet-600"  },
+  { name: "Sulvane",    flag: <Globe className="w-full h-full text-yellow-200" />, status: "NEUTRAL", rel: 61, bg: "from-yellow-400 to-amber-500",   threat: "LOW",      action: "Engage",     actionColor: "bg-amber-500"   },
+  { name: "Meldova",    flag: <Globe className="w-full h-full text-slate-200" />, status: "NEUTRAL", rel: 54, bg: "from-slate-400 to-slate-600",    threat: "MEDIUM",   action: "Engage",     actionColor: "bg-slate-600"   },
+  { name: "Telmiran",   flag: <Globe className="w-full h-full text-stone-200" />, status: "NEUTRAL", rel: 44, bg: "from-stone-400 to-stone-600",    threat: "MEDIUM",   action: "Engage",     actionColor: "bg-stone-600"   },
+  { name: "Drexan",     flag: <Globe className="w-full h-full text-orange-200" />, status: "RIVAL",   rel: 23, bg: "from-orange-400 to-red-500",     threat: "HIGH",     action: "Warn",       actionColor: "bg-orange-600"  },
+  { name: "Veskovia",   flag: <Globe className="w-full h-full text-red-200" />, status: "HOSTILE", rel: 8,  bg: "from-red-500 to-red-800",        threat: "CRITICAL", action: "Respond",  actionColor: "bg-red-700"     },
 ];
 
 const EVENTS = [
-  { id: "v", sev: "CRISIS" as const,      title: "Veskovia Advances!", desc: "Armored units breach the northern corridor. Immediate military action required.", img: IMG.infantry,    cta: "Deploy Forces",    ctaMini: "⚔ Deploy", nav: "defense",  icon: "🚨" },
-  { id: "d", sev: "WARNING" as const,     title: "Drexan Naval Buildup", desc: "34% surge in enemy naval activity near Sector 7 detected by intelligence.", img: IMG.destroyer,   cta: "Open Dialogue",    ctaMini: "💬 Talk",  nav: "foreign",  icon: "⚠️" },
-  { id: "t", sev: "OPPORTUNITY" as const, title: "Tech Boom Incoming!", desc: "Your Technology sector is surging +6.7%. Invest now to unlock Level 3 bonus.", img: IMG.technology,  cta: "Invest Now",       ctaMini: "⬆ Invest",nav: "economy",  icon: "🚀" },
+  { id: "v", sev: "CRISIS" as const,      title: "Veskovia Advances!", desc: "Armored units breach the northern corridor. Immediate military action required.", img: IMG.infantry,    cta: "Deploy Forces",    ctaMini: "Deploy", nav: "defense",  icon: <AlertTriangle className="w-5 h-5 text-red-500" /> },
+  { id: "d", sev: "WARNING" as const,     title: "Drexan Naval Buildup", desc: "34% surge in enemy naval activity near Sector 7 detected by intelligence.", img: IMG.destroyer,   cta: "Open Dialogue",    ctaMini: "Talk",  nav: "foreign",  icon: <AlertTriangle className="w-5 h-5 text-amber-500" /> },
+  { id: "t", sev: "OPPORTUNITY" as const, title: "Tech Boom Incoming!", desc: "Your Technology sector is surging +6.7%. Invest now to unlock Level 3 bonus.", img: IMG.technology,  cta: "Invest Now",       ctaMini: "Invest",nav: "economy",  icon: <TrendingUp className="w-5 h-5 text-emerald-500" /> },
 ];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -218,8 +218,8 @@ function Dashboard({ setView }: { setView: (v: string) => void }) {
           <h1 className="text-6xl font-[Cinzel] font-black text-white drop-shadow-xl leading-none">VELTRIA</h1>
           <p className="text-sm text-white/80 font-semibold mt-2">Year 2031 · Quarter III</p>
           <div className="flex gap-2 mt-3">
-            <span className="bg-[#C4882A] text-white text-[10px] font-black px-3 py-1 rounded-full">⚔ 3 Active Events</span>
-            <span className="bg-white/20 backdrop-blur text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/30">👑 Rank #14 Globally</span>
+            <span className="bg-[#C4882A] text-white text-[10px] font-black px-3 py-1 rounded-full">3 Active Events</span>
+            <span className="bg-white/20 backdrop-blur text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/30">Rank #14 Globally</span>
           </div>
         </motion.div>
       </div>
@@ -399,7 +399,7 @@ function EconomyScreen() {
                     <XPBar xp={s.xp} delay={i * 0.07} />
                   </div>
                   <div className="text-[10px] font-semibold text-stone-500">
-                    💰 ${s.revenue}B/yr revenue
+                    ${s.revenue}B/yr revenue
                   </div>
                 </div>
                 <div className="px-3 pb-3">
@@ -407,7 +407,7 @@ function EconomyScreen() {
                     className={`w-full py-2.5 rounded-xl font-black text-sm transition-all duration-200 shadow-sm ${
                       active ? "bg-green-500 text-white shadow-green-200" : "bg-[#C4882A] text-white hover:bg-[#b07820]"
                     }`}>
-                    {active ? "✓ Investing" : "⬆ Invest"}
+                    {active ? "Investing" : "Invest"}
                   </motion.button>
                 </div>
               </motion.div>
@@ -495,7 +495,7 @@ function DefenseScreen() {
                     Redeploy
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.94 }} className="py-2 text-[10px] font-bold text-[#C4882A] hover:bg-amber-50 border-l border-stone-100 transition-colors rounded-br-2xl">
-                    ⬆ Upgrade
+                    Upgrade
                   </motion.button>
                 </div>
               </motion.div>
@@ -676,7 +676,7 @@ function LockedScreen({ label }: { label: string }) {
       </div>
       <motion.button whileTap={{ scale: 0.93 }}
         className="bg-[#1E3A6E] text-white font-bold px-8 py-3 rounded-2xl shadow-md hover:bg-[#1E3A6E]/90 transition-colors">
-        🔒 Request Access
+        Request Access
       </motion.button>
       <div className="flex items-center gap-2 text-[11px] text-stone-400 font-medium">
         <Star className="w-3.5 h-3.5 text-[#C4882A]" />

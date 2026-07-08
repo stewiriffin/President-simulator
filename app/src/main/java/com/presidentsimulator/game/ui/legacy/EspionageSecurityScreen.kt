@@ -1,4 +1,4 @@
-package com.presidentsimulator.game.ui
+package com.presidentsimulator.game.ui.legacy
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement

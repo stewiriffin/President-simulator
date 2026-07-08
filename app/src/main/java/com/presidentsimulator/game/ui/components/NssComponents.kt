@@ -187,9 +187,9 @@ fun NssScreenHeader(
             fallbackGradient = gradientColors,
             modifier = Modifier.matchParentSize(),
             scrimTopToBottom = listOf(
-                NssPrimary.copy(alpha = 0.55f),
-                Color.Transparent,
-                NssPrimary.copy(alpha = 0.72f),
+                Color(0xFF1E3A6E).copy(alpha = 0.70f),
+                Color(0xFF1E3A6E).copy(alpha = 0.35f),
+                Color(0xFF1E3A6E).copy(alpha = 0.82f),
             ),
         )
         Column(
@@ -200,13 +200,16 @@ fun NssScreenHeader(
         ) {
             Text(
                 text = "MINISTRY OF",
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = 10.sp,
                 color = NssOnPhoto.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Black,
                 letterSpacing = 4.sp,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
             Text(
                 text = title.uppercase(),
-                style = MaterialTheme.typography.headlineSmall,
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Black,
                 color = NssOnPhoto,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -217,16 +220,18 @@ fun NssScreenHeader(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(NssOnPhoto.copy(alpha = 0.15f))
+                            .border(1.dp, NssOnPhoto.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {
                         Text(text = label, fontSize = 9.sp, color = NssOnPhoto.copy(alpha = 0.7f), fontWeight = FontWeight.SemiBold)
-                        Text(text = value, fontSize = 13.sp, color = NssOnPhoto, fontWeight = FontWeight.Black)
+                        Text(text = value, fontSize = 14.sp, color = NssOnPhoto, fontWeight = FontWeight.Black)
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun NssPanel(

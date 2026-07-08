@@ -67,8 +67,13 @@ fun MinistryBottomNav(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .background(NssPrimary.copy(alpha = 0.95f)),
+            .height(60.dp)
+            .background(
+                color = NssPrimary,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                    topStart = 20.dp, topEnd = 20.dp,
+                ),
+            ),
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentRoute == item.destination.route
@@ -76,38 +81,30 @@ fun MinistryBottomNav(
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clickable { onNavigate(item.destination) },
             ) {
-                if (selected) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(NssOnPhoto.copy(alpha = 0.1f)),
-                    )
-                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(top = 8.dp, bottom = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
+                    // Active gold indicator bar at top
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.45f)
+                            .height(2.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .background(if (selected) NssAccent else androidx.compose.ui.graphics.Color.Transparent),
+                    )
                     Box {
-                        if (selected) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .offset(y = (-8).dp)
-                                    .fillMaxWidth(0.5f)
-                                    .height(2.dp)
-                                    .background(NssAccent),
-                            )
-                        }
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.label,
-                            tint = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp),
+                            tint = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.45f),
+                            modifier = Modifier.size(22.dp),
                         )
                         if (alerts > 0) {
                             Box(
@@ -130,12 +127,13 @@ fun MinistryBottomNav(
                     }
                     Text(
                         text = item.label,
-                        color = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.5f),
+                        color = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.45f),
                         fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
                     )
                 }
             }
         }
     }
 }
+

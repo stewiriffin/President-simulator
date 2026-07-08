@@ -11,21 +11,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Nation State Simulator visual system: warm parchment surfaces, navy primary, gold accent.
+ * Nation State Simulator visual system: Modern UI with Navy/Gold palette
  */
 private val NssColors = lightColorScheme(
     primary = NssPrimary,
     onPrimary = StarkWhite,
-    primaryContainer = Color(0xFFD4E0F0),
-    onPrimaryContainer = Color(0xFF0F2347),
+    primaryContainer = Color(0xFFD0D7E8), // lighter navy
+    onPrimaryContainer = Color(0xFF0F1D36),
     secondary = NssSecondary,
     onSecondary = NssForeground,
-    secondaryContainer = Color(0xFFEDE4D0),
+    secondaryContainer = NssMuted,
     onSecondaryContainer = NssForeground,
     tertiary = NssAccent,
     onTertiary = StarkWhite,
-    tertiaryContainer = Color(0xFFF5E6C8),
-    onTertiaryContainer = Color(0xFF5C3D0A),
+    tertiaryContainer = Color(0xFFF3E7D5),
+    onTertiaryContainer = Color(0xFF624415),
     background = NssBackground,
     onBackground = NssForeground,
     surface = NssCard,
@@ -33,19 +33,37 @@ private val NssColors = lightColorScheme(
     surfaceVariant = NssSecondary,
     onSurfaceVariant = NssMutedForeground,
     outline = NssBorder,
-    outlineVariant = Color(0xFFE6DDC8),
+    outlineVariant = Color(0xFFD6D3D1), // stone-300
     error = NssDestructive,
     onError = StarkWhite,
-    errorContainer = Color(0xFFF5D5D5),
-    onErrorContainer = Color(0xFF6B1515),
+    errorContainer = Color(0xFFFEE2E2), // red-100
+    onErrorContainer = Color(0xFF7F1D1D), // red-900
 )
 
 private val NssTypography = Typography(
+    headlineLarge = TextStyle(
+        fontFamily = FontFamily.Serif, // Cinzel equivalent
+        fontWeight = FontWeight.Black,
+        fontSize = 32.sp,
+        letterSpacing = 2.sp,
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Black,
+        fontSize = 24.sp,
+        letterSpacing = 1.sp,
+    ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        letterSpacing = 1.sp,
+        fontWeight = FontWeight.Black,
+        fontSize = 20.sp,
+        letterSpacing = 0.5.sp,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Black,
+        fontSize = 16.sp,
+        letterSpacing = 0.5.sp,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -64,24 +82,25 @@ private val NssTypography = Typography(
         fontSize = 13.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
+        color = NssMutedForeground
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Black,
         fontSize = 10.sp,
         letterSpacing = 1.5.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Medium,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         letterSpacing = 1.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
         fontSize = 8.sp,
         letterSpacing = 1.2.sp,
@@ -98,3 +117,4 @@ fun PresidentSimulatorTheme(
         content = content,
     )
 }
+
