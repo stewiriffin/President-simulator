@@ -7,6 +7,15 @@ import com.presidentsimulator.game.data.SaveLoadFeedback
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** Manual save-slot metadata for launch / analytics UI. Slots are 1..[SLOT_COUNT]. */
+data class SaveSlotInfo(
+    val slotIndex: Int,
+    val occupied: Boolean,
+    val year: Int = 0,
+    val month: Int = 0,
+    val label: String = "",
+)
+
 /**
  * Analytics ledger and GameState serialization engine.
  * [GameViewModel] applies transforms via immutable copies and persists payloads locally.
@@ -67,6 +76,13 @@ class AnalyticsSaveViewModel {
             ).toLong().coerceAtLeast(0L)
     }
 
+    /** 1 = strongest economy among player + rivals. */
+    fun worldEconomicRank(state: GameState): Int {
+        val playerGdp = calculateGDP(state).toDouble()
+        val rivalGdps = state.diplomacy.rivals.map { it.economicPower * playerGdp }
+        return 1 + rivalGdps.count { it > playerGdp }
+    }
+
     fun exportGameStateToJson(state: GameState): String =
         json.encodeToString(GameState.serializer(), state)
 
@@ -100,7 +116,11 @@ class AnalyticsSaveViewModel {
     companion object {
         const val PREFS_NAME = "nation_state_simulator_save"
         const val KEY_AUTOMATED_SAVE = "automated_save_json"
+        const val KEY_SAVE_SLOT_PREFIX = "save_slot_"
+        const val SLOT_COUNT = 3
         const val KEY_LAST_PAYLOAD_BYTES = "last_payload_bytes"
+
+        fun slotKey(slot: Int): String = "$KEY_SAVE_SLOT_PREFIX$slot"
 
         fun formatBytes(bytes: Int): String = when {
             bytes >= 1_048_576 -> "%.2f MB".format(bytes / 1_048_576.0)

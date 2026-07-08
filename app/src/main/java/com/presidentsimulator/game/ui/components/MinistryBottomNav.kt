@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
@@ -31,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.ui.navigation.GameDestination
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
@@ -54,7 +59,20 @@ fun bottomNavAlertCount(state: GameState, destination: GameDestination): Int = w
     GameDestination.Dashboard -> collectAlertCount(state)
     GameDestination.Military -> if (state.diplomacy.activeWar != null) 1 else 0
     GameDestination.Diplomacy -> state.diplomacy.rivals.count { it.relationshipScore < 25 }
+    GameDestination.Science -> scienceAlertCount(state)
+    GameDestination.LawsSociety -> state.legal.pendingLaws.size
+    GameDestination.Governance -> if (state.governance.activeResolution != null) 1 else 0
     else -> 0
+}
+
+private fun scienceAlertCount(state: GameState): Int {
+    val research = state.research
+    val nearComplete = research.activeTechnology != null && research.progressPercent() >= 80f
+    val idleWithPoints = research.activeTechnology == null && research.sciencePoints >= 150L
+    return when {
+        nearComplete || idleWithPoints -> 1
+        else -> 0
+    }
 }
 
 @Composable
@@ -67,13 +85,13 @@ fun MinistryBottomNav(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .background(
-                color = NssPrimary,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                    topStart = 20.dp, topEnd = 20.dp,
+            .background(NssPrimary.copy(alpha = 0.95f))
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
                 ),
-            ),
+            )
+            .height(Dimens.BottomNavHeight),
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentRoute == item.destination.route
@@ -81,30 +99,38 @@ fun MinistryBottomNav(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight()
                     .clickable { onNavigate(item.destination) },
             ) {
+                if (selected) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(NssOnPhoto.copy(alpha = 0.1f)),
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 4.dp),
+                        .padding(vertical = Dimens.SpacingSmall),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SpacingXSmall),
                 ) {
-                    // Active gold indicator bar at top
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.45f)
-                            .height(2.dp)
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                            .background(if (selected) NssAccent else androidx.compose.ui.graphics.Color.Transparent),
-                    )
                     Box {
+                        if (selected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .offset(y = (-8).dp)
+                                    .fillMaxWidth(0.5f)
+                                    .height(2.dp)
+                                    .background(NssAccent),
+                            )
+                        }
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.label,
-                            tint = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.45f),
-                            modifier = Modifier.size(22.dp),
+                            tint = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp),
                         )
                         if (alerts > 0) {
                             Box(
@@ -127,13 +153,12 @@ fun MinistryBottomNav(
                     }
                     Text(
                         text = item.label,
-                        color = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.45f),
+                        color = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.5f),
                         fontSize = 9.sp,
-                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
         }
     }
 }
-

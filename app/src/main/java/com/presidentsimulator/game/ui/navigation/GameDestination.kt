@@ -10,4 +10,6 @@ sealed class GameDestination(val route: String, val title: String) {
     data object LawsSociety : GameDestination("laws_society", "Domestic Policy")
     data object Governance : GameDestination("governance", "United Nations")
     data object AudioSettings : GameDestination("audio_settings", "Settings")
+    data object Analytics : GameDestination("analytics", "Analytics")
+    data object Demographics : GameDestination("demographics", "Demographics")
 }

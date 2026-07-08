@@ -43,6 +43,12 @@ import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.NssTabBar
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
@@ -70,7 +76,8 @@ fun GovernanceUNScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
         NssScreenHeader(
             title = "United Nations",
@@ -124,7 +131,7 @@ private fun AssemblyPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (state.governance.lastResolutionResult.isNotBlank()) {
@@ -386,7 +393,7 @@ private fun CoalitionsPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(

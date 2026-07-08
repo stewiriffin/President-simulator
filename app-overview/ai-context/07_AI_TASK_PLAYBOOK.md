@@ -36,7 +36,7 @@ This file tells an AI exactly how to implement common tasks in this app safely.
 ## Task Pattern B: Add a New Screen
 
 1. Create screen in `ui/screens`.
-2. Add destination entry in `app/src/main/java/com/presidentsimulator/game/ui/navigation/GameDestination.kt`.
+2. Add destination entry in `ui/navigation/GameDestination.kt`.
 3. Register route in `GameNavigation`.
 4. Add nav button entry in `MinistryBottomNav` (if user-facing).
 5. Wire state + intents from `GameViewModel`.
@@ -81,17 +81,6 @@ This file tells an AI exactly how to implement common tasks in this app safely.
 
 ---
 
-## Troubleshooting Media Issues
-
-### Audio Checklist
-
-1. Confirm expected raw assets exist for the requested track/SFX names.
-2. Confirm `musicEnabled` / `sfxEnabled` are enabled in `SettingsAudioScreen`.
-3. Check diagnostics exposed by `GameAudioManager` in the settings diagnostics panel.
-4. Check Logcat/debug logs for `SoundPool` skipped raw asset warnings (missing resource messages are logged and playback is skipped).
-
----
-
 ## Task Pattern G: Debug "Action Does Nothing"
 
 Checklist:
@@ -113,6 +102,24 @@ Prefer adjusting named constants first:
 - Base production conversion rates
 
 After tuning, run at least 12 ticks to observe trend behavior.
+
+---
+
+## Troubleshooting Media Issues
+
+If images appear missing:
+
+1. Confirm internet/device connectivity
+2. Confirm URL in `NssCardImages`
+3. Verify no over-aggressive overlay hides image content
+4. Check that screen uses `NssPhotoHeader` and non-null `imageUrl`
+
+If audio appears missing:
+
+1. Confirm raw assets exist for expected tracks/sfx
+2. Confirm music/sfx toggles are enabled in settings
+3. Inspect diagnostics shown in `SettingsAudioScreen`
+4. Check Logcat and debug logs for `SoundPool` skipped raw asset warnings
 
 ---
 

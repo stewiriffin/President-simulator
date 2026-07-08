@@ -90,4 +90,5 @@ If audio appears missing:
 1. Confirm raw assets exist for expected tracks/sfx
 2. Confirm music/sfx toggles are enabled in settings
 3. Inspect diagnostics shown in `SettingsAudioScreen`
+4. Check Logcat and debug logs for `SoundPool` skipped raw asset warnings
 

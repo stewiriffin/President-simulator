@@ -299,6 +299,66 @@ object TechCatalog {
                 description = "Grants +3 approval and +2% production.",
             ),
         ),
+        Technology(
+            id = "fusion_pilot",
+            name = "Fusion Pilot Plant",
+            scienceCost = 400L,
+            category = TechCategory.ECONOMY,
+            effect = TechEffectModifier(
+                productionMultiplier = 1.12f,
+                factoryOutputMultiplier = 1.08f,
+                description = "Increases general production by 12% and factory output by 8%.",
+            ),
+            prerequisiteIds = listOf("green_grid", "nuclear_fission"),
+        ),
+        Technology(
+            id = "stealth_composites",
+            name = "Stealth Composites",
+            scienceCost = 320L,
+            category = TechCategory.MILITARY,
+            effect = TechEffectModifier(
+                militaryStrengthMultiplier = 1.14f,
+                description = "Increases military strength by 14%.",
+            ),
+            prerequisiteIds = listOf("drone_warfare"),
+        ),
+        Technology(
+            id = "universal_broadband",
+            name = "Universal Broadband",
+            scienceCost = 210L,
+            category = TechCategory.SOCIETY,
+            effect = TechEffectModifier(
+                scienceMultiplier = 1.10f,
+                approvalBonus = 2f,
+                productionMultiplier = 1.03f,
+                description = "Increases science by 10%, production by 3%, and grants +2 approval.",
+            ),
+            prerequisiteIds = listOf("mass_education"),
+        ),
+        Technology(
+            id = "orbital_logistics",
+            name = "Orbital Logistics",
+            scienceCost = 380L,
+            category = TechCategory.ECONOMY,
+            effect = TechEffectModifier(
+                productionMultiplier = 1.09f,
+                factoryOutputMultiplier = 1.06f,
+                description = "Increases general production by 9% and factory output by 6%.",
+            ),
+            prerequisiteIds = listOf("green_grid"),
+        ),
+        Technology(
+            id = "civil_defense_net",
+            name = "Civil Defense Network",
+            scienceCost = 260L,
+            category = TechCategory.MILITARY,
+            effect = TechEffectModifier(
+                militaryStrengthMultiplier = 1.07f,
+                approvalBonus = 1f,
+                description = "Increases military strength by 7% and grants +1 approval.",
+            ),
+            prerequisiteIds = listOf("drone_warfare"),
+        ),
     )
 
     fun byId(id: String): Technology? = all.find { it.id == id }

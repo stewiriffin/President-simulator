@@ -21,6 +21,9 @@ import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.data.TreatyType
+import com.presidentsimulator.game.data.TurnSummary
+import com.presidentsimulator.game.data.CovertMission
+import com.presidentsimulator.game.data.MissionStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +53,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _saveLoadFeedback = MutableStateFlow(SaveLoadFeedback())
     val saveLoadFeedback: StateFlow<SaveLoadFeedback> = _saveLoadFeedback.asStateFlow()
 
+    /** Non-null after each End Turn — consumed by TurnSummaryDialog then cleared. */
+    private val _turnSummary = MutableStateFlow<TurnSummary?>(null)
+    val turnSummary: StateFlow<TurnSummary?> = _turnSummary.asStateFlow()
+
+    private val _missionResults = MutableStateFlow<List<CovertMission>>(emptyList())
+    val missionResults: StateFlow<List<CovertMission>> = _missionResults.asStateFlow()
+
+    /** Whether a persisted save exists so the launch screen can offer Continue. */
+    private val _hasSave = MutableStateFlow(false)
+    val hasSave: StateFlow<Boolean> = _hasSave.asStateFlow()
+
+    /** True while showing the launch/new-game screen. */
+    private val _showLaunchScreen = MutableStateFlow(true)
+    val showLaunchScreen: StateFlow<Boolean> = _showLaunchScreen.asStateFlow()
+
     private var autoTickJob: Job? = null
     private val random = Random.Default
     private val diplomacyEngine = DiplomacyViewModel(random)
@@ -59,11 +77,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val advancementEngine = AdvancementViewModel()
     private val tradeEngine = TradeMarketViewModel(random)
     private val governanceEngine = GovernanceViewModel(random)
+    private val demographicsEngine = DemographicsCampaignViewModel()
 
     private val savePrefs = application.getSharedPreferences(
         AnalyticsSaveViewModel.PREFS_NAME,
         Context.MODE_PRIVATE,
     )
+
+    init {
+        _hasSave.value = hasAutomatedSave()
+        // If no save exists skip the launch screen straight to a fresh game.
+        if (!_hasSave.value) _showLaunchScreen.value = false
+    }
 
     // ── Time engine ──────────────────────────────────────────────────────────
 
@@ -75,6 +100,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun advanceTimeTick() {
         if (_currentActiveEvent.value != null) return
         if (_state.value.gameOver.isGameOver) return
+
+        val beforeMissions = _state.value.espionage.activeMissions.associateBy { it.id }
 
         _state.update { current ->
             if (current.gameOver.isGameOver) return@update current
@@ -88,14 +115,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             val settledBudget = next.vitals.budget + next.netIncome
             val grownPopulation = applyPopulationChange(next)
-            val driftedApproval = (next.vitals.approval +
-                (50f - next.vitals.approval) * 0.01f).coerceIn(0f, 100f)
 
             next = next.copy(
                 vitals = next.vitals.copy(
                     budget = settledBudget,
                     population = grownPopulation,
-                    approval = driftedApproval,
                 ),
             )
 
@@ -113,21 +137,68 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             // Science generation, social ministry funding, and health demographics.
             next = advancementEngine.processSocietyTick(next)
 
+            // Resolve pending laws in parliament
+            next = productionLawEngine.processLawsTick(next)
+
             // Global markets, trade contracts, and tariff collection.
             next = tradeEngine.processTradeTick(next)
 
             // UN voting, resolution outcomes, and alliance passive effects.
             next = governanceEngine.processGovernanceTick(next)
 
+            // Cohort approval, elections, and alternate victory paths.
+            next = demographicsEngine.processDemographicsTick(next)
+            if (next.gameOver.isGameOver) {
+                return@update next
+            }
+
             // Final ledger step: append KPI snapshot to the rolling history window.
             next = analyticsEngine.recordHistoricalSnapshot(next)
             next
         }
 
+        // Build turn summary before auto-save so deltas can be computed.
+        val beforeSnap = _state.value.analytics.history.takeLast(2)
+        if (beforeSnap.size >= 2) {
+            val prev = beforeSnap[beforeSnap.size - 2]
+            val curr = beforeSnap.last()
+            _turnSummary.value = TurnSummary(
+                year = curr.year,
+                month = curr.month,
+                budgetDelta = curr.budget - prev.budget,
+                approvalDelta = curr.approval - prev.approval,
+                populationDelta = curr.population - prev.population,
+                gdpDelta = curr.gdp - prev.gdp,
+                netIncome = _state.value.netIncome,
+            )
+        }
+
         if (_state.value.gameOver.isGameOver) {
             stopAutoTick()
         } else {
+            // Check for completed spy missions
+            val afterMissions = _state.value.espionage.activeMissions
+            
+            val newlyResolved = afterMissions.filter { after ->
+                val before = beforeMissions[after.id]
+                before?.status == MissionStatus.ACTIVE &&
+                (after.status == MissionStatus.SUCCESS || after.status == MissionStatus.FAILED)
+            }
+            
+            if (newlyResolved.isNotEmpty()) {
+                _missionResults.value = _missionResults.value + newlyResolved
+            }
+
+            // Auto-save after every tick.
+            saveGameProgress()
             maybeTriggerEvent()
+        }
+    }
+
+    fun dismissMissionResult() {
+        val current = _missionResults.value
+        if (current.isNotEmpty()) {
+            _missionResults.value = current.drop(1)
         }
     }
 
@@ -305,6 +376,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val restored = analyticsEngine.importGameStateFromJson(jsonString)
             _state.value = restored
             _currentActiveEvent.value = null
+            _turnSummary.value = null
+            _missionResults.value = emptyList()
+            _showLaunchScreen.value = false
+            _hasSave.value = true
             _saveLoadFeedback.value = analyticsEngine.feedbackForLoad(jsonString)
             true
         } catch (error: Exception) {
@@ -321,6 +396,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             .putInt(AnalyticsSaveViewModel.KEY_LAST_PAYLOAD_BYTES, payload.length)
             .apply()
         _saveLoadFeedback.value = analyticsEngine.feedbackForSave(payload)
+        _hasSave.value = true
     }
 
     fun loadLastAutomatedSave() {
@@ -334,6 +410,91 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun hasAutomatedSave(): Boolean =
         !savePrefs.getString(AnalyticsSaveViewModel.KEY_AUTOMATED_SAVE, null).isNullOrBlank()
+
+    fun listSaveSlots(): List<SaveSlotInfo> =
+        (1..AnalyticsSaveViewModel.SLOT_COUNT).map { slot ->
+            val payload = savePrefs.getString(AnalyticsSaveViewModel.slotKey(slot), null)
+            if (payload.isNullOrBlank()) {
+                SaveSlotInfo(slotIndex = slot, occupied = false, label = "Slot $slot — Empty")
+            } else {
+                try {
+                    val snap = analyticsEngine.importGameStateFromJson(payload)
+                    SaveSlotInfo(
+                        slotIndex = slot,
+                        occupied = true,
+                        year = snap.year,
+                        month = snap.month,
+                        label = "Slot $slot — ${snap.month}/${snap.year}",
+                    )
+                } catch (_: Exception) {
+                    SaveSlotInfo(slotIndex = slot, occupied = true, label = "Slot $slot — Corrupt?")
+                }
+            }
+        }
+
+    fun saveToSlot(slot: Int) {
+        if (slot !in 1..AnalyticsSaveViewModel.SLOT_COUNT) return
+        val payload = analyticsEngine.exportGameStateToJson(_state.value)
+        savePrefs.edit()
+            .putString(AnalyticsSaveViewModel.slotKey(slot), payload)
+            .putInt(AnalyticsSaveViewModel.KEY_LAST_PAYLOAD_BYTES, payload.length)
+            .apply()
+        _saveLoadFeedback.value = SaveLoadFeedback(
+            message = "Saved to slot $slot (${AnalyticsSaveViewModel.formatBytes(payload.length)}).",
+            payloadBytes = payload.length,
+            success = true,
+        )
+        _hasSave.value = true
+    }
+
+    fun loadFromSlot(slot: Int) {
+        if (slot !in 1..AnalyticsSaveViewModel.SLOT_COUNT) return
+        val payload = savePrefs.getString(AnalyticsSaveViewModel.slotKey(slot), null)
+        if (payload.isNullOrBlank()) {
+            _saveLoadFeedback.value = SaveLoadFeedback(
+                message = "Slot $slot is empty.",
+                payloadBytes = 0,
+                success = false,
+            )
+            return
+        }
+        if (importGameStateFromJson(payload)) {
+            _saveLoadFeedback.value = SaveLoadFeedback(
+                message = "Loaded slot $slot (${AnalyticsSaveViewModel.formatBytes(payload.length)}).",
+                payloadBytes = payload.length,
+                success = true,
+            )
+        }
+    }
+
+    fun clearTurnSummary() {
+        _turnSummary.value = null
+    }
+
+    fun continueGame() {
+        if (_hasSave.value) {
+            loadLastAutomatedSave()
+            _showLaunchScreen.value = false
+        }
+    }
+
+    fun startNewGame() {
+        _state.value = GameState.initial()
+        _currentActiveEvent.value = null
+        _turnSummary.value = null
+        _missionResults.value = emptyList()
+        _showLaunchScreen.value = false
+        saveGameProgress()
+    }
+
+    fun returnToLaunch() {
+        stopAutoTick()
+        _currentActiveEvent.value = null
+        _turnSummary.value = null
+        _missionResults.value = emptyList()
+        _hasSave.value = hasAutomatedSave()
+        _showLaunchScreen.value = true
+    }
 
     // ── Production & law actions ──────────────────────────────────────────────
 
@@ -371,6 +532,48 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (_currentActiveEvent.value != null) return
         _state.update { diplomacyEngine.negotiateTreaty(it, targetCountryId, type) }
     }
+
+    fun breakTreaty(targetCountryId: String, type: TreatyType) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { diplomacyEngine.breakTreaty(it, targetCountryId, type) }
+    }
+
+    fun setDefcon(level: Int) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { diplomacyEngine.setDefcon(it, level) }
+    }
+
+    fun setIdeology(ideology: com.presidentsimulator.game.data.Ideology) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { productionLawEngine.setIdeology(it, ideology) }
+    }
+
+    fun cancelPendingLaw(lawId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { productionLawEngine.cancelPendingLaw(it, lawId) }
+    }
+
+    fun rushPendingLaw(lawId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { productionLawEngine.rushPendingLaw(it, lawId) }
+    }
+
+    fun sendForeignAid(targetCountryId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { diplomacyEngine.sendForeignAid(it, targetCountryId) }
+    }
+
+    fun conductStateVisit(targetCountryId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { diplomacyEngine.conductStateVisit(it, targetCountryId) }
+    }
+
+    fun runCampaignAction(action: CampaignAction) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { demographicsEngine.runCampaignAction(it, action) }
+    }
+
+    fun worldEconomicRank(): Int = analyticsEngine.worldEconomicRank(_state.value)
 
     fun signArmistice() {
         if (_currentActiveEvent.value != null) return

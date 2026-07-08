@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,17 +33,24 @@ import com.presidentsimulator.game.ui.GovernanceUNScreen
 import com.presidentsimulator.game.ui.components.EventCrisisDialog
 import com.presidentsimulator.game.ui.components.GlobalHud
 import com.presidentsimulator.game.ui.components.MinistryBottomNav
+import com.presidentsimulator.game.ui.components.MissionResultDialog
 import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssPanel
+import com.presidentsimulator.game.ui.components.TurnSummaryDialog
 import com.presidentsimulator.game.ui.components.collectAlertCount
+import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
+import com.presidentsimulator.game.ui.screens.AnalyticsScreen
+import com.presidentsimulator.game.ui.screens.ApprovalDemographicsScreen
 import com.presidentsimulator.game.ui.screens.DiplomacyScreen
 import com.presidentsimulator.game.ui.screens.EconomyScreen
+import com.presidentsimulator.game.ui.screens.LaunchScreen
 import com.presidentsimulator.game.ui.screens.LawsScreen
 import com.presidentsimulator.game.ui.screens.MainDashboardScreen
 import com.presidentsimulator.game.ui.screens.MilitaryScreen
@@ -61,8 +67,14 @@ fun GameNavigation(
     val state by viewModel.state.collectAsState()
     val isAutoTicking by viewModel.isAutoTicking.collectAsState()
     val activeEvent by viewModel.currentActiveEvent.collectAsState()
+    val turnSummary by viewModel.turnSummary.collectAsState()
+    val missionResults by viewModel.missionResults.collectAsState()
+    val showLaunch by viewModel.showLaunchScreen.collectAsState()
+    val hasSave by viewModel.hasSave.collectAsState()
     val gameOver = state.gameOver.isGameOver
-    val timeBlocked = activeEvent != null || gameOver
+    val isVictory = state.gameOver.isVictory
+    val timeBlocked = activeEvent != null || gameOver ||
+        turnSummary != null || missionResults.isNotEmpty()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -79,9 +91,30 @@ fun GameNavigation(
         }
     }
 
+    if (showLaunch) {
+        LaunchScreen(
+            hasSave = hasSave,
+            onContinueGame = {
+                audio.playClick()
+                viewModel.continueGame()
+            },
+            onNewGame = {
+                audio.playClick()
+                viewModel.startNewGame()
+            },
+            slots = viewModel.listSaveSlots(),
+            onLoadSlot = { slot ->
+                audio.playClick()
+                viewModel.loadFromSlot(slot)
+            },
+        )
+        return
+    }
+
     GameAudioBridge(state = state)
     GameAudioCrisisEffect(hasActiveEvent = activeEvent != null)
 
+    // Overlay priority: crisis events > mission results > turn summary > campaign end
     activeEvent?.let { event ->
         EventCrisisDialog(
             event = event,
@@ -92,48 +125,37 @@ fun GameNavigation(
         )
     }
 
-    if (gameOver) {
-        Dialog(
-            onDismissRequest = { },
-            properties = DialogProperties(
-                dismissOnBackPress = false,
-                dismissOnClickOutside = false,
-            ),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(NssCardShape)
-                    .background(NssBackground)
-                    .padding(20.dp),
-            ) {
-                Text("GAME OVER", fontSize = 10.sp, fontWeight = FontWeight.Black, color = NssRed, letterSpacing = 3.sp)
-                Text(
-                    text = "Coup d'État",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    color = NssForeground,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
-                )
-                NssPanel(modifier = Modifier.fillMaxWidth()) {
-                    Text(state.gameOver.reason, fontSize = 13.sp, color = NssMutedForeground, lineHeight = 18.sp)
-                }
-                Text(
-                    text = "Load Last Save",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .clip(NssCardShape)
-                        .background(NssPrimary)
-                        .clickable { viewModel.loadLastAutomatedSave() }
-                        .padding(vertical = 12.dp),
-                    color = NssOnPhoto,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                )
-            }
+    val pendingMission = missionResults.firstOrNull()
+    if (activeEvent == null && pendingMission != null) {
+        MissionResultDialog(
+            mission = pendingMission,
+            state = state,
+            onDismiss = {
+                audio.playClick()
+                viewModel.dismissMissionResult()
+            },
+        )
+    }
+
+    if (activeEvent == null && pendingMission == null) {
+        turnSummary?.let { summary ->
+            TurnSummaryDialog(
+                summary = summary,
+                onDismiss = {
+                    audio.playClick()
+                    viewModel.clearTurnSummary()
+                },
+            )
         }
+    }
+
+    if (gameOver) {
+        CampaignEndDialog(
+            isVictory = isVictory,
+            reason = state.gameOver.reason,
+            onLoadSave = { viewModel.loadLastAutomatedSave() },
+            onReturnToLaunch = { viewModel.returnToLaunch() },
+        )
     }
 
     Column(
@@ -192,7 +214,13 @@ fun GameNavigation(
                 GovernanceUNScreen(state = state, viewModel = viewModel)
             }
             composable(GameDestination.AudioSettings.route) {
-                SettingsAudioScreen()
+                SettingsAudioScreen(viewModel = viewModel)
+            }
+            composable(GameDestination.Analytics.route) {
+                AnalyticsScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.Demographics.route) {
+                ApprovalDemographicsScreen(state = state, viewModel = viewModel)
             }
         }
 
@@ -201,5 +229,73 @@ fun GameNavigation(
             currentRoute = currentRoute,
             onNavigate = navigate,
         )
+    }
+}
+
+@Composable
+private fun CampaignEndDialog(
+    isVictory: Boolean,
+    reason: String,
+    onLoadSave: () -> Unit,
+    onReturnToLaunch: () -> Unit,
+) {
+    val accent = if (isVictory) NssEmerald else NssRed
+    val headline = if (isVictory) "VICTORY" else "GAME OVER"
+    val title = if (isVictory) "Mandate Secured" else "Regime Collapsed"
+
+    Dialog(
+        onDismissRequest = { },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(NssBackground)
+                .padding(20.dp),
+        ) {
+            Text(headline, fontSize = 10.sp, fontWeight = FontWeight.Black, color = accent, letterSpacing = 3.sp)
+            Text(
+                text = title,
+                fontWeight = FontWeight.Black,
+                fontSize = 20.sp,
+                color = NssForeground,
+                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+            )
+            NssPanel(modifier = Modifier.fillMaxWidth()) {
+                Text(reason, fontSize = 13.sp, color = NssMutedForeground, lineHeight = 18.sp)
+            }
+            Text(
+                text = "Load Last Save",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp)
+                    .clip(NssCardShape)
+                    .background(NssPrimary)
+                    .clickable(onClick = onLoadSave)
+                    .padding(vertical = 12.dp),
+                color = NssOnPhoto,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "Return to Title",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .clip(NssCardShape)
+                    .background(NssAccent)
+                    .clickable(onClick = onReturnToLaunch)
+                    .padding(vertical = 12.dp),
+                color = NssOnPhoto,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

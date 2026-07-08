@@ -74,16 +74,10 @@ class AdvancementViewModel {
             techGrowthBonus = techEffects.populationGrowthBonus,
         )
 
-        val approvalDelta = religion.approvalBonus * 0.08f +
-            techEffects.approvalBonus * 0.05f +
-            (cultureScore - 50f) * 0.02f +
-            (healthLevel - 50f) * 0.015f
-
         return state.copy(
             vitals = state.vitals.copy(
                 budget = budget,
                 population = population,
-                approval = (state.vitals.approval + approvalDelta).coerceIn(0f, 100f),
             ),
             society = society.copy(
                 healthLevel = healthLevel,

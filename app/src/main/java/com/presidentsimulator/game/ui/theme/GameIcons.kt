@@ -2,6 +2,7 @@ package com.presidentsimulator.game.ui.theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.AirplanemodeActive
@@ -26,7 +27,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.Whatshot
@@ -102,7 +103,9 @@ object GameIcons {
         GameDestination.Science -> MinistryScience
         GameDestination.LawsSociety -> MinistryLawsSociety
         GameDestination.Governance -> MinistryGovernance
-        GameDestination.AudioSettings -> Icons.Default.VolumeUp
+        GameDestination.AudioSettings -> Icons.AutoMirrored.Filled.VolumeUp
+        GameDestination.Analytics -> Icons.Default.Timeline
+        GameDestination.Demographics -> Icons.Default.Groups
     }
 
     fun forTradeCommodity(commodity: TradeCommodity): ImageVector = when (commodity) {

@@ -58,6 +58,12 @@ import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.graphics.CountryFlag
 import com.presidentsimulator.game.ui.components.graphics.rivalIdToCountryCode
 import com.presidentsimulator.game.ui.theme.NssAccent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
@@ -86,7 +92,8 @@ fun SecurityScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
         NssScreenHeader(
             title = "Intelligence",
@@ -125,7 +132,7 @@ private fun InternalSecurityView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -343,7 +350,7 @@ private fun ForeignIntelligenceView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

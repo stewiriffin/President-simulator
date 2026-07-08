@@ -43,6 +43,15 @@ fun GameAudioBridge(state: GameState) {
         }
         previousWarTarget = warTarget
     }
+
+    val defcon = state.military.defcon
+    var previousDefcon by remember { mutableStateOf(5) }
+    LaunchedEffect(defcon) {
+        if (defcon < previousDefcon && defcon <= 2) {
+            audio.playSfx(SfxType.CRISIS_ALERT)
+        }
+        previousDefcon = defcon
+    }
 }
 
 /**

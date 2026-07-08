@@ -14,8 +14,8 @@ import coil.compose.SubcomposeAsyncImageContent
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.presidentsimulator.game.ui.theme.NssBackground
-import com.presidentsimulator.game.ui.theme.NssCard
-import com.presidentsimulator.game.ui.theme.NssForeground
+import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.PhotoScrimAlpha
 
 /**
  * Photo header for NSS cards — loads a remote image with gradient fallback and overlay scrim.
@@ -70,28 +70,44 @@ fun NssPhotoHeader(
     }
 }
 
-/** Darkens the bottom edge so titles stay readable while the photo stays visible above. */
+/** Default card/hero bottom scrim — keeps white titles readable (~WCAG AA on photos). */
 val PhotoHeaderBottomScrim = listOf(
     Color.Transparent,
-    Color.Black.copy(alpha = 0.18f),
-    Color.Black.copy(alpha = 0.72f),
+    Color.Black.copy(alpha = PhotoScrimAlpha.Soft),
+    Color.Black.copy(alpha = PhotoScrimAlpha.Strong),
 )
 
-/** Card headers — matches v3 `from-black/80 via-black/20 to-transparent`. */
-val CardHeaderBottomScrim = listOf(
+/** Card image headers across feature categories share these alphas. */
+val CardHeaderBottomScrim = PhotoHeaderBottomScrim
+
+/** Full-width ministry screen header: navy wash for title + stat pills. */
+val ScreenHeaderScrim = listOf(
+    NssPrimary.copy(alpha = PhotoScrimAlpha.ScreenHeaderTop),
     Color.Transparent,
-    Color.Black.copy(alpha = 0.2f),
-    Color.Black.copy(alpha = 0.78f),
+    NssPrimary.copy(alpha = PhotoScrimAlpha.ScreenHeaderBottom),
 )
 
-/** Ministry banner scrims — light parchment wash so photos read through on the left. */
+/** Dashboard / map hero: soft top brand wash, strong bottom for centered title. */
+val HeroHeaderScrim = listOf(
+    NssPrimary.copy(alpha = PhotoScrimAlpha.Medium),
+    Color.Transparent,
+    NssBackground.copy(alpha = PhotoScrimAlpha.Max),
+)
+
+/** Compact strip headers under titles (secondary overlays). */
+val StripHeaderBottomScrim = listOf(
+    Color.Transparent,
+    NssPrimary.copy(alpha = PhotoScrimAlpha.Strong),
+)
+
+/** Ministry banner left parchment wash so copy stays legible over photography. */
 val MinistryBannerLeftScrim = listOf(
-    NssBackground.copy(alpha = 0.72f),
-    NssBackground.copy(alpha = 0.35f),
+    NssBackground.copy(alpha = PhotoScrimAlpha.BannerLeftStrong),
+    NssBackground.copy(alpha = PhotoScrimAlpha.BannerLeftMid),
     Color.Transparent,
 )
 
 val MinistryBannerBottomScrim = listOf(
     Color.Transparent,
-    NssBackground.copy(alpha = 0.25f),
+    NssBackground.copy(alpha = PhotoScrimAlpha.Soft),
 )

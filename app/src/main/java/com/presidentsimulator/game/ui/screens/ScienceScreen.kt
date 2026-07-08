@@ -39,6 +39,12 @@ import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
 import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssAccent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
@@ -58,7 +64,7 @@ fun ScienceScreen(
     val sciencePerMonth = viewModel.projectedSciencePerTick()
     val activeTech = research.activeTechnology
 
-    Column(modifier = modifier.fillMaxSize().background(NssBackground)) {
+    Column(modifier = modifier.fillMaxSize().background(NssBackground).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
         NssScreenHeader(
             title = "Science",
             imageUrl = NssCardImages.BANNER_SCIENCE,
@@ -72,7 +78,7 @@ fun ScienceScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
@@ -95,7 +101,9 @@ fun ScienceScreen(
                     isActive = research.activeTechId == tech.id,
                     prerequisitesMet = research.prerequisitesMet(tech),
                     canStart = viewModel.canStartResearch(tech.id),
+                    canUnlock = viewModel.canUnlockTechnology(tech.id),
                     onStartResearch = { viewModel.startResearch(tech.id) },
+                    onUnlock = { viewModel.unlockTechnology(tech.id) },
                 )
             }
         }
@@ -182,7 +190,9 @@ private fun TechTreeRow(
     isActive: Boolean,
     prerequisitesMet: Boolean,
     canStart: Boolean,
+    canUnlock: Boolean,
     onStartResearch: () -> Unit,
+    onUnlock: () -> Unit,
 ) {
     val status = when {
         isUnlocked -> "UNLOCKED"
@@ -204,7 +214,7 @@ private fun TechTreeRow(
                 scrimTopToBottom = CardHeaderBottomScrim,
             )
         }
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Dimens.ContentPadding)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(tech.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
@@ -231,6 +241,20 @@ private fun TechTreeRow(
                         .clip(NssCardShape)
                         .background(if (canStart) NssEmerald else NssMutedForeground.copy(alpha = 0.3f))
                         .clickable(enabled = canStart, onClick = onStartResearch)
+                        .padding(vertical = 8.dp),
+                    color = NssOnPhoto,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = if (canUnlock) "⚡ Unlock Instantly (${tech.scienceCost} pts)" else "Instant unlock unavailable",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .clip(NssCardShape)
+                        .background(if (canUnlock) NssAccent else NssMutedForeground.copy(alpha = 0.3f))
+                        .clickable(enabled = canUnlock, onClick = onUnlock)
                         .padding(vertical = 8.dp),
                     color = NssOnPhoto,
                     fontWeight = FontWeight.Bold,

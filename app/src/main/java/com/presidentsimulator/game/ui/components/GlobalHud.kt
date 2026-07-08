@@ -12,16 +12,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HowToVote
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Warning
@@ -33,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -41,12 +49,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.viewmodel.toApprovalString
 import kotlin.math.roundToInt
-
 
 /**
  * Gamified v3 top HUD — compact vitals, alert pill, pulsing End Turn CTA.
@@ -67,11 +75,15 @@ fun GlobalHud(
     val treasuryWarn = state.netIncome < 0
     val stabilityWarn = stability < 60f
 
+    val monthsToElection = monthsUntilElection(state)
+    val electionWarn = monthsToElection in 0..12
+
     val vitals = listOf(
         HudChip(Icons.Default.AttachMoney, formatCompactMoney(state.vitals.budget), treasuryWarn),
         HudChip(Icons.Default.Shield, "${stability.roundToInt()}%", stabilityWarn),
         HudChip(Icons.Default.SportsMartialArts, formatCompactMil(milPower), warn = false),
         HudChip(Icons.Default.Groups, state.vitals.approval.toApprovalString(), state.vitals.approval < 50f),
+        HudChip(Icons.Default.HowToVote, electionCountdownLabel(monthsToElection), electionWarn),
     )
 
     val pulseTransition = rememberInfiniteTransition(label = "endTurnPulse")
@@ -82,210 +94,161 @@ fun GlobalHud(
         label = "endTurnScale",
     )
 
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                color = NssPrimary,
-                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+            .background(NssPrimary)
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
-            .padding(bottom = 10.dp),
+            .height(Dimens.HudHeight)
+            .padding(horizontal = Dimens.SpacingSmall),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.padding(start = Dimens.SpacingSmall, end = Dimens.SpacingSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(NssAccent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.AccountBalance, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(16.dp))
+            }
+            Column {
+                Text("VELTRIA", color = NssOnPhoto, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 1.sp)
+                Text(
+                    text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
+                    fontSize = 9.sp,
+                    color = NssOnPhoto.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Brand
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Box(
+            vitals.forEach { chip ->
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(NssAccent, Color(0xFFB87333)),
-                            ),
-                        ),
-                    contentAlignment = Alignment.Center,
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (chip.warn) Color(0x33F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
-                        Icons.Default.AccountBalance,
+                        chip.icon,
                         contentDescription = null,
-                        tint = NssOnPhoto,
-                        modifier = Modifier.size(20.dp),
+                        tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                        modifier = Modifier.size(12.dp),
                     )
-                }
-                Column {
                     Text(
-                        text = "VELTRIA",
-                        color = NssOnPhoto,
+                        text = chip.value,
+                        color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        fontSize = 16.sp,
-                        letterSpacing = 2.sp,
-                    )
-                    Text(
-                        text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
-                        fontSize = 10.sp,
-                        color = NssOnPhoto.copy(alpha = 0.55f),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            // Spacer
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-
-            // Vitals row (3 key metrics)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                vitals.take(3).forEach { chip ->
-                    Row(
+            if (alertCount > 0) {
+                val alertPulse by pulseTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.35f,
+                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                    label = "alertPulse",
+                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x33EF4444))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (chip.warn) Color(0x40F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
-                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            chip.icon,
-                            contentDescription = null,
-                            tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
-                            modifier = Modifier.size(13.dp),
-                        )
-                        Text(
-                            text = chip.value,
-                            color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                if (alertCount > 0) {
-                    val alertPulse by pulseTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = 1.35f,
-                        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-                        label = "alertPulse",
+                            .size(6.dp)
+                            .scale(alertPulse)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFFF87171)),
                     )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0x40EF4444))
-                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .scale(alertPulse)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color(0xFFF87171)),
-                        )
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = Color(0xFFFCA5A5),
-                            modifier = Modifier.size(13.dp),
-                        )
-                        Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
-                    }
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(12.dp))
+                    Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
 
-        // Bottom row: End Turn / Auto speed
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.padding(end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Approval chip
-            val approvalChip = vitals.getOrNull(3)
-            if (approvalChip != null) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (approvalChip.warn) Color(0x40F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        approvalChip.icon,
-                        contentDescription = null,
-                        tint = if (approvalChip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
-                        modifier = Modifier.size(13.dp),
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (timeSpeedEnabled) {
+                            if (isAutoTicking) NssAccent.copy(alpha = 0.55f) else NssOnPhoto.copy(alpha = 0.12f)
+                        } else {
+                            NssOnPhoto.copy(alpha = 0.06f)
+                        },
                     )
-                    Text(
-                        text = approvalChip.value,
-                        color = if (approvalChip.warn) Color(0xFFFCD34D) else NssOnPhoto,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                }
+                    .clickable(enabled = timeSpeedEnabled, onClick = onToggleTimeSpeed)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    imageVector = if (isAutoTicking) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isAutoTicking) "Pause auto-tick" else "Start auto-tick",
+                    tint = NssOnPhoto,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = if (isAutoTicking) "Auto" else "1x",
+                    color = NssOnPhoto,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                )
             }
-
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-
-            // Auto-speed button
-            if (timeSpeedEnabled) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isAutoTicking) Color(0xFF374151) else NssOnPhoto.copy(alpha = 0.1f))
-                        .clickable(onClick = onToggleTimeSpeed)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        Icons.Default.LocalFireDepartment,
-                        contentDescription = null,
-                        tint = if (isAutoTicking) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.6f),
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Text(
-                        text = if (isAutoTicking) "AUTO" else "PAUSE",
-                        color = if (isAutoTicking) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
-                    )
-                }
-            }
-
-            // End Turn CTA
             Row(
                 modifier = Modifier
                     .scale(if (nextTurnEnabled) endTurnScale else 1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.35f))
+                    .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.4f))
                     .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(14.dp))
-                Text("End Turn", color = NssOnPhoto, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text("End Turn", color = NssOnPhoto, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
         }
     }
+}
+
+fun monthsUntilElection(state: GameState): Int {
+    val current = state.year * 12 + (state.month - 1)
+    val election = state.nextElectionYear * 12
+    return (election - current).coerceAtLeast(0)
+}
+
+fun electionCountdownLabel(months: Int): String = when {
+    months <= 0 -> "Vote"
+    months < 12 -> "${months}m"
+    else -> "${months / 12}y"
 }
 
 private data class HudChip(val icon: ImageVector, val value: String, val warn: Boolean)

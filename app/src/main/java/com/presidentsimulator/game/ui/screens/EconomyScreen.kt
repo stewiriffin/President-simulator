@@ -2,6 +2,7 @@ package com.presidentsimulator.game.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,11 +51,14 @@ import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.InfrastructureType
+import com.presidentsimulator.game.data.TradeCommodity
+import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.ui.components.NssAlertBanner
 import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
+import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssProgressBar
 import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.NssSectorBarColors
@@ -63,6 +67,13 @@ import com.presidentsimulator.game.ui.components.NssSectorCard
 import com.presidentsimulator.game.ui.components.NssStripPhotoCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.formatMa2Money
+import com.presidentsimulator.game.viewmodel.TradeMarketViewModel
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.GameIcons
 import com.presidentsimulator.game.ui.theme.NssAccent
@@ -83,6 +94,10 @@ import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.viewmodel.toResourceString
 import kotlin.math.roundToInt
 
+private enum class SectorInvestAction {
+    FACTORY, FARM, HOUSING, POWER_PLANT, MINE, UNIVERSITY, TANKS
+}
+
 private data class SectorModel(
     val name: String,
     val gdpShare: Float,
@@ -92,6 +107,8 @@ private data class SectorModel(
     val xp: Int,
     val gradient: List<Color>,
     val imageUrl: String,
+    val investAction: SectorInvestAction? = null,
+    val investLabel: String = "⬆ Invest",
 )
 
 private data class InfraRowModel(
@@ -106,16 +123,18 @@ fun EconomyScreen(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val audio = remember(context) { GameAudioManager.getInstance(context) }
     var selectedTab by remember { mutableStateOf("SECTORS") }
     val tabs = listOf("SECTORS", "POLICY", "BUDGET", "TRADE")
     val gdp = remember(state) { AnalyticsSaveViewModel().calculateGDP(state) }
-    val tradeBalance = state.economy.effectiveExports - state.economy.effectiveImports
     val sectors = remember(state) { buildSectors(state, gdp) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
         NssScreenHeader(
             title = "Economy",
@@ -134,21 +153,27 @@ fun EconomyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(Dimens.ContentPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall),
         ) {
             when (selectedTab) {
-                "SECTORS" -> SectorsTab(state = state, gdp = gdp, sectors = sectors)
+                "SECTORS" -> SectorsTab(state, gdp, sectors, viewModel, audio)
                 "POLICY" -> PolicyTab(state = state, viewModel = viewModel)
                 "BUDGET" -> BudgetTab(state = state)
-                else -> TradeTab(state = state)
+                else -> TradeTab(state = state, viewModel = viewModel, audio = audio)
             }
         }
     }
 }
 
 @Composable
-private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) {
+private fun SectorsTab(
+    state: GameState,
+    gdp: Long,
+    sectors: List<SectorModel>,
+    viewModel: GameViewModel,
+    audio: GameAudioManager,
+) {
     GdpBreakdownCard(sectors = sectors)
 
     Text(
@@ -157,11 +182,11 @@ private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) 
         fontWeight = FontWeight.Black,
         color = NssPrimary,
         letterSpacing = 3.sp,
-        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = Dimens.SpacingSmall, bottom = Dimens.SpacingXSmall),
     )
 
     sectors.chunked(2).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { sector ->
                 NssSectorCard(
                     name = sector.name,
@@ -173,7 +198,24 @@ private fun SectorsTab(state: GameState, gdp: Long, sectors: List<SectorModel>) 
                     imageUrl = sector.imageUrl,
                     xpPercent = sector.xp,
                     revenueLabel = "${formatMa2Money((gdp * sector.gdpShare / 100f).toLong())}/yr",
-                    onInvest = { },
+                    investEnabled = sector.investAction != null,
+                    investLabel = sector.investLabel,
+                    onInvest = {
+                        when (sector.investAction) {
+                            SectorInvestAction.FACTORY -> viewModel.buildFactory(1)
+                            SectorInvestAction.FARM -> viewModel.buildFarm(1)
+                            SectorInvestAction.HOUSING -> viewModel.buildHousing(1)
+                            SectorInvestAction.POWER_PLANT -> viewModel.buildPowerPlant(1)
+                            SectorInvestAction.MINE -> viewModel.buildMine(1)
+                            SectorInvestAction.UNIVERSITY -> viewModel.buildUniversity()
+                            SectorInvestAction.TANKS -> viewModel.purchaseMilitaryHardware(
+                                com.presidentsimulator.game.data.MilitaryHardware.TANKS,
+                                1,
+                            )
+                            null -> Unit
+                        }
+                        if (sector.investAction != null) audio.playBuildSuccess()
+                    },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -192,8 +234,8 @@ private fun GdpBreakdownCard(sectors: List<SectorModel>) {
             .fillMaxWidth()
             .clip(NssCardShape)
             .background(NssGameCard)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(Dimens.ContentPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GridGap),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -257,7 +299,7 @@ private fun PolicyTab(state: GameState, viewModel: GameViewModel) {
     )
 
     policies.chunked(2).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { (key, _) ->
                 NssStripPhotoCard(
                     imageUrl = NssCardImages.BANNER_ECONOMY,
@@ -285,7 +327,7 @@ private fun PolicyTab(state: GameState, viewModel: GameViewModel) {
     NssCard {
         LedgerLine("Current Revenue", formatMa2Money(currentRevenue), NssEmerald)
         LedgerLine("Projected Change", "${if (projectedChange >= 0) "+" else ""}${formatMa2Money(projectedChange)}", if (projectedChange >= 0) NssEmerald else NssRed)
-        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(color = NssBorder, modifier = Modifier.padding(vertical = Dimens.SpacingSmall))
         LedgerLine("Net / month", formatMa2Money(state.netIncome), if (state.netIncome >= 0) NssEmerald else NssRed, bold = true)
     }
 
@@ -309,7 +351,7 @@ private fun BudgetTab(state: GameState) {
             imageUrl = line.imageUrl,
             fallbackGradient = line.fallbackGradient,
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
                 Box(modifier = Modifier.width(4.dp).height(48.dp).background(line.accent))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -339,63 +381,284 @@ private data class BudgetLine(
 )
 
 @Composable
-private fun TradeTab(state: GameState) {
-    state.diplomacy.rivals.filter { it.hasTradeTreaty || it.relationshipScore >= 40 }.take(6).chunked(2).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            row.forEach { rival ->
-                val exports = if (rival.hasTradeTreaty) 30_000_000_000L else 10_000_000_000L
-                val imports = 15_000_000_000L
-                val balance = exports - imports
-                NssStripPhotoCard(
-                    imageUrl = NssCardImages.BANNER_FOREIGN,
-                    fallbackGradient = NssGradients.Foreign,
-                    modifier = Modifier.weight(1f),
+private fun TradeTab(
+    state: GameState,
+    viewModel: GameViewModel,
+    audio: GameAudioManager,
+) {
+    var draftTariff by remember(state.trade.tariffRate) { mutableFloatStateOf(state.trade.tariffRate) }
+    var selectedPartnerId by remember { mutableStateOf(state.diplomacy.rivals.firstOrNull()?.id) }
+    var selectedCommodity by remember { mutableStateOf(TradeCommodity.OIL) }
+    var selectedType by remember { mutableStateOf(TradeType.EXPORT) }
+
+    val forecastRevenue = viewModel.forecastTariffRevenue(draftTariff)
+    val forecastPenalty = viewModel.forecastTariffApprovalPenalty(draftTariff)
+    val partner = state.diplomacy.rivals.find { it.id == selectedPartnerId }
+    val dealPrice = partner?.let { viewModel.negotiatedDealPrice(it.id, selectedCommodity, selectedType) } ?: 0L
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("TARIFF POLICY", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        Text(
+            text = "${(draftTariff * 100f).roundToInt()}% · forecast ${formatMa2Money(forecastRevenue)}/mo · approval ${"%.1f".format(forecastPenalty)}",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        )
+        Slider(
+            value = draftTariff,
+            onValueChange = { draftTariff = it },
+            onValueChangeFinished = { viewModel.setTariffRate(draftTariff) },
+            valueRange = 0f..0.40f,
+            colors = SliderDefaults.colors(thumbColor = NssPrimary, activeTrackColor = NssPrimary, inactiveTrackColor = NssBorder),
+        )
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("SPOT MARKET", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        state.market.resources.forEach { quote ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(quote.commodity.displayName, fontWeight = FontWeight.Bold, color = NssForeground)
+                    Text(formatMa2Money(quote.currentPrice) + "/u", fontSize = 11.sp, color = NssMutedForeground)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "BUY",
+                        modifier = Modifier
+                            .clip(NssCardShape)
+                            .background(NssEmerald.copy(alpha = 0.2f))
+                            .clickable {
+                                viewModel.buyFromMarket(quote.commodity)
+                                audio.playBuildSuccess()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        color = NssEmerald,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                    )
+                    Text(
+                        "SELL",
+                        modifier = Modifier
+                            .clip(NssCardShape)
+                            .background(NssRed.copy(alpha = 0.15f))
+                            .clickable {
+                                viewModel.sellToMarket(quote.commodity)
+                                audio.playBuildSuccess()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        color = NssRed,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+        }
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("ACTIVE DEALS", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        if (state.trade.activeDeals.isEmpty()) {
+            Text("No active contracts.", fontSize = 12.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 6.dp))
+        } else {
+            state.trade.activeDeals.forEach { deal ->
+                val name = state.diplomacy.rivalById(deal.partnerCountryId)?.name ?: deal.partnerCountryId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("$name · ${deal.commodity.displayName}", fontWeight = FontWeight.Bold, color = NssForeground)
                         Text(
-                            if (rival.hasTradeTreaty) "PARTNER" else "NEUTRAL",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = NssPrimary,
+                            "${deal.type.name} ×${deal.amountPerTick} · ${formatMa2Money(deal.pricePerUnit)}/u",
+                            fontSize = 11.sp,
+                            color = NssMutedForeground,
                         )
                     }
                     Text(
-                        text = "${if (balance >= 0) "+" else ""}${formatMa2Money(balance)}",
-                        color = if (balance >= 0) NssEmerald else NssRed,
-                        fontSize = 22.sp,
+                        "CANCEL",
+                        modifier = Modifier
+                            .clip(NssCardShape)
+                            .background(NssBorder)
+                            .clickable { viewModel.cancelTradeDeal(deal.dealId) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = NssForeground,
                     )
-                    Text("TRADE BALANCE", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
-                    Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Column {
-                            Text("EXPORTS", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
-                            Text(formatMa2Money(exports), color = NssEmerald, fontWeight = FontWeight.SemiBold)
-                        }
-                        Column {
-                            Text("IMPORTS", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground)
-                            Text(formatMa2Money(imports), color = NssRed, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
                 }
             }
-            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
         }
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("PROPOSE CONTRACT", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        Text("Partners", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            state.diplomacy.rivals.take(4).forEach { rival ->
+                FilterChip(
+                    selected = selectedPartnerId == rival.id,
+                    onClick = { selectedPartnerId = rival.id },
+                    label = { Text(rival.name, fontSize = 10.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = NssPrimary,
+                        selectedLabelColor = Color.White,
+                    ),
+                )
+            }
+        }
+        Text("Commodity", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TradeCommodity.entries.forEach { commodity ->
+                FilterChip(
+                    selected = selectedCommodity == commodity,
+                    onClick = { selectedCommodity = commodity },
+                    label = { Text(commodity.displayName, fontSize = 10.sp) },
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+            TradeType.entries.forEach { type ->
+                FilterChip(
+                    selected = selectedType == type,
+                    onClick = { selectedType = type },
+                    label = { Text(type.name, fontSize = 10.sp) },
+                )
+            }
+        }
+        val canPropose = partner != null && TradeMarketViewModel.canProposeDeal(state, partner.id)
+        Text(
+            text = if (partner == null) "Select a partner" else "Unit price ${formatMa2Money(dealPrice)}",
+            fontSize = 12.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            text = "SUBMIT DEAL",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)
+                .clip(NssCardShape)
+                .background(if (canPropose) NssPrimary else NssBorder)
+                .clickable(enabled = canPropose) {
+                    partner?.let {
+                        viewModel.proposeTradeDeal(it.id, selectedCommodity, 100L, selectedType)
+                        audio.playBuildSuccess()
+                    }
+                }
+                .padding(vertical = 12.dp),
+            color = if (canPropose) Color.White else NssMutedForeground,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 
 private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
     val economy = state.economy
     val production = state.production
-    val total = (economy.factories + economy.farms + production.powerPlants + production.mines + 1).toFloat()
+    val total = (
+        economy.factories + economy.farms + economy.housing +
+            production.powerPlants + production.mines +
+            state.research.unlockedTechIds.size.coerceAtLeast(1)
+        ).toFloat().coerceAtLeast(1f)
+
+    fun share(count: Int): Float = (count / total * 100f).coerceIn(1f, 80f)
+
     return listOf(
-        SectorModel("Services", 37.6f, 42.3f, 3.1f, 4, 72, NssGradients.Emerald, NssCardImages.SERVICES),
-        SectorModel("Heavy Industry", economy.factories / total * 100f, 18.7f, 1.8f, economy.factories.coerceIn(1, 5), 45, NssGradients.Sky, NssCardImages.INDUSTRY),
-        SectorModel("Manufacturing", production.lastGoodsProduced.coerceAtMost(100).toFloat(), 14.2f, 0.9f, 3, 28, NssGradients.Indigo, NssCardImages.MANUFACTURING),
-        SectorModel("Technology", state.research.unlockedTechIds.size.toFloat() * 8f, 8.9f, 6.7f, state.research.unlockedTechIds.size.coerceIn(1, 5), 88, NssGradients.Violet, NssCardImages.TECHNOLOGY),
-        SectorModel("Agriculture", economy.farms / total * 100f, 6.1f, -0.3f, economy.farms.coerceIn(1, 5), 12, NssGradients.Amber, NssCardImages.AGRICULTURE),
-        SectorModel("Energy", production.powerPlants / total * 100f, 3.4f, -1.2f, production.powerPlants.coerceIn(1, 5), 33, NssGradients.Orange, NssCardImages.ENERGY),
-        SectorModel("Defense Ind.", state.military.tanks.coerceAtMost(20).toFloat(), 6.4f, 2.1f, 4, 61, NssGradients.Red, NssCardImages.DEFENSE_IND),
+        SectorModel(
+            name = "Heavy Industry",
+            gdpShare = share(economy.factories),
+            employment = 18.7f,
+            growth = 1.8f,
+            level = economy.factories.coerceIn(1, 5),
+            xp = (economy.factories * 8).coerceIn(10, 95),
+            gradient = NssGradients.Sky,
+            imageUrl = NssCardImages.INDUSTRY,
+            investAction = SectorInvestAction.FACTORY,
+            investLabel = "⬆ Build Factory",
+        ),
+        SectorModel(
+            name = "Agriculture",
+            gdpShare = share(economy.farms),
+            employment = 6.1f,
+            growth = if (production.foodShortage) -1.2f else 0.8f,
+            level = economy.farms.coerceIn(1, 5),
+            xp = (economy.farms * 7).coerceIn(10, 95),
+            gradient = NssGradients.Amber,
+            imageUrl = NssCardImages.AGRICULTURE,
+            investAction = SectorInvestAction.FARM,
+            investLabel = "⬆ Build Farm",
+        ),
+        SectorModel(
+            name = "Housing",
+            gdpShare = share(economy.housing),
+            employment = 12.4f,
+            growth = 1.1f,
+            level = economy.housing.coerceIn(1, 5),
+            xp = (economy.housing * 6).coerceIn(10, 95),
+            gradient = NssGradients.Emerald,
+            imageUrl = NssCardImages.SERVICES,
+            investAction = SectorInvestAction.HOUSING,
+            investLabel = "⬆ Build Housing",
+        ),
+        SectorModel(
+            name = "Energy",
+            gdpShare = share(production.powerPlants),
+            employment = 3.4f,
+            growth = if (production.energyShortage) -1.5f else 0.6f,
+            level = production.powerPlants.coerceIn(1, 5),
+            xp = (production.powerPlants * 9).coerceIn(10, 95),
+            gradient = NssGradients.Orange,
+            imageUrl = NssCardImages.ENERGY,
+            investAction = SectorInvestAction.POWER_PLANT,
+            investLabel = "⬆ Build Power Plant",
+        ),
+        SectorModel(
+            name = "Mining",
+            gdpShare = share(production.mines),
+            employment = 8.2f,
+            growth = 0.9f,
+            level = production.mines.coerceIn(1, 5),
+            xp = (production.mines * 8).coerceIn(10, 95),
+            gradient = NssGradients.Indigo,
+            imageUrl = NssCardImages.MANUFACTURING,
+            investAction = SectorInvestAction.MINE,
+            investLabel = "⬆ Build Mine",
+        ),
+        SectorModel(
+            name = "Technology",
+            gdpShare = (state.research.unlockedTechIds.size * 6f).coerceIn(4f, 25f),
+            employment = 8.9f,
+            growth = 6.7f,
+            level = state.society.universities.coerceIn(1, 5),
+            xp = (state.society.universities * 8).coerceIn(10, 95),
+            gradient = NssGradients.Violet,
+            imageUrl = NssCardImages.TECHNOLOGY,
+            investAction = SectorInvestAction.UNIVERSITY,
+            investLabel = "⬆ Build University",
+        ),
+        SectorModel(
+            name = "Defense Ind.",
+            gdpShare = (state.military.tanks.coerceAtMost(40) / 2f).coerceIn(3f, 18f),
+            employment = 6.4f,
+            growth = 2.1f,
+            level = (state.military.tanks / 5).coerceIn(1, 5),
+            xp = (state.military.tanks * 2).coerceIn(10, 95),
+            gradient = NssGradients.Red,
+            imageUrl = NssCardImages.DEFENSE_IND,
+            investAction = SectorInvestAction.TANKS,
+            investLabel = "⬆ Build Tanks",
+        ),
     )
 }
 

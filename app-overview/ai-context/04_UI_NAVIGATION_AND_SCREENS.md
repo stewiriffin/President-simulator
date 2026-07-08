@@ -2,7 +2,8 @@
 
 ## Active Navigation Surface
 
-Navigation is defined in `ui/navigation/GameNavigation.kt`.
+Navigation destinations live in `ui/navigation/GameDestination.kt`.
+Route composition is defined in `ui/navigation/GameNavigation.kt`.
 
 ### Active destinations
 
@@ -12,14 +13,24 @@ Navigation is defined in `ui/navigation/GameNavigation.kt`.
 - `diplomacy` -> `DiplomacyScreen`
 - `secret_service` -> `SecurityScreen`
 - `science` -> `ScienceScreen`
-- `laws_society` -> `LawsScreen`
+- `laws_society` -> `LawsScreen` (laws + SOCIETY funding/religion/universities tab)
 - `governance` -> `GovernanceUNScreen`
-- `audio_settings` -> `SettingsAudioScreen`
+- `audio_settings` -> `SettingsAudioScreen` (audio + save/load)
+- `analytics` -> `AnalyticsScreen` (charts + save/load)
+- `demographics` -> `ApprovalDemographicsScreen`
 
-### Global overlays
+Bottom nav stays Overview / Economy / Defense / Foreign / Intel. Science, Domestic, UN, Settings, Analytics, and Demographics are reached from dashboard tiles (and Settings/Analytics for saves).
 
-- Event modal: `EventCrisisDialog`
-- Game-over modal: custom dialog in `GameNavigation`
+### Launch gate
+
+When `showLaunchScreen` is true, `GameNavigation` shows `LaunchScreen` (Continue / New Game) instead of the HUD shell.
+
+### Global overlays (priority)
+
+1. `EventCrisisDialog` (active crisis)
+2. `MissionResultDialog` (queued covert outcomes)
+3. `TurnSummaryDialog` (post-tick deltas)
+4. Campaign end dialog (coup loss, election loss, or victory) with Load Save + Return to Title
 
 ---
 
@@ -28,61 +39,52 @@ Navigation is defined in `ui/navigation/GameNavigation.kt`.
 ## `MainDashboardScreen`
 
 - Macro status and event cards
-- Quick ministry jump tiles
+- Quick ministry jump tiles (including Analytics / Demographics)
 - Hero country header and vitals cards
-- Surface for urgent situations and central command UX
 
 ## `EconomyScreen`
 
-- Sector performance cards
-- Policy sliders (e.g., tax controls)
-- Budget breakdown lines
-- Trade-related economic summaries
+- Sector Invest builds factories/farms/housing/power/mines
+- Tax policy slider
+- Live Trade tab: tariffs, spot market, deals, propose contract
 
 ## `MilitaryScreen`
 
-- Branch and unit cards with readiness and strength
-- Recruitment/procurement cards
-- Hardware purchase actions
-- Integrates policy effects from diplomacy/governance state
+- Forces / recruitment / logistics
+- Deployment posture + salary funding on Logistics
 
 ## `DiplomacyScreen`
 
-- Rival cards and relation controls
-- Treaty and negotiation views
-- Displays `ActiveWarPanel` when war exists
+- Rival cards, grain export, trade/NAP treaties, alliances, war
 
 ## `SecurityScreen`
 
-- Internal security metrics (instability/coup risk)
-- Protocol toggles and security funding
-- Spy network stats
-- Active/recent covert operation cards and target actions
+- Internal security metrics and covert ops
 
 ## `ScienceScreen`
 
-- Current research progress panel
-- Tech tree list with start/unlock status
-- Research funding controls and tech metadata
+- Research progress and tech tree
 
 ## `LawsScreen`
 
-- Category tabs (constitution/economy/social mapped to law categories)
-- Per-law cards, active state, upkeep/effects
-- Confirmation dialog for enact/repeal
+- Law catalogs by tab + SOCIETY ministry/religion/university controls
 
 ## `GovernanceUNScreen`
 
-- UN assembly and coalition tabs
-- Resolution proposal and voting tracking
-- Nation bribery controls
-- Alliance creation/dissolution actions
+- UN assembly, bribes, alliances
+
+## `AnalyticsScreen` / `ApprovalDemographicsScreen`
+
+- History charts + manual save/load
+- Persistent approval cohorts and election year
 
 ## `SettingsAudioScreen`
 
-- Music/SFX toggles and volume controls
-- Diagnostics information from `GameAudioManager`
-- Test sound trigger
+- Music/SFX + optional save/load panel
+
+## `LaunchScreen`
+
+- Title Continue / New Game entry
 
 ---
 
@@ -103,20 +105,20 @@ Important shared pieces:
 - `NssPhotoHeader`
 - `MinistryBottomNav`
 - `GlobalHud`
+- `TurnSummaryDialog` / `MissionResultDialog`
 
 ---
 
 ## Image System Notes
 
-- All major cards and headers use remote image URLs from `NssCardImages`.
-- `NssPhotoHeader` handles load/fallback/scrims through Coil.
-- Event illustrations first try local `R.drawable.event_<id>` resources, then remote fallback image mapping.
+- Major cards/headers use remote image URLs from `NssCardImages`.
+- `NssPhotoHeader` handles load/fallback/scrims through Coil with standardized `PhotoScrimAlpha` presets.
 
 ---
 
 ## Legacy / Non-primary UI Files
 
-The repo also includes older/parallel screens in `ui/legacy/` (not all are active in current nav), including:
+Older or parallel screens live in `ui/legacy/` and are not wired into active nav:
 
 - `MainGameScreen`
 - `AnalyticsDashboardScreen`
@@ -127,4 +129,3 @@ The repo also includes older/parallel screens in `ui/legacy/` (not all are activ
 - `EspionageSecurityScreen`
 
 When editing, verify whether a target screen is wired in `GameNavigation` before investing major effort.
-

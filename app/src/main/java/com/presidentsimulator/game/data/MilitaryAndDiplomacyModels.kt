@@ -89,6 +89,12 @@ enum class DeploymentStatus {
     MOBILIZED,
 }
 
+@Serializable
+enum class WarTactic(val displayName: String) {
+    OFFENSIVE("Press Offensive"),
+    DEFENSIVE("Hold Ground"),
+}
+
 /**
  * Active conflict against a single rival.
  * [warProgress] is -100 (total defeat) … +100 (total victory).
@@ -100,6 +106,7 @@ data class WarState(
     val playerCasualties: Long = 0L,
     val enemyCasualties: Long = 0L,
     val monthsActive: Int = 0,
+    val currentTactic: WarTactic = WarTactic.OFFENSIVE,
 )
 
 /**
@@ -113,6 +120,8 @@ data class RivalNation(
     val flagEmoji: String,
     val relationshipScore: Int,
     val militaryStrength: Double,
+    /** Relative economic clout used for world GDP / rank estimates. */
+    val economicPower: Double = 1.0,
     val hasTradeTreaty: Boolean = false,
     val hasNonAggressionPact: Boolean = false,
 ) {
@@ -178,6 +187,7 @@ data class DiplomacyState(
                 flagEmoji = "🟦",
                 relationshipScore = 25,
                 militaryStrength = 520.0,
+                economicPower = 0.92,
                 hasTradeTreaty = true,
             ),
             RivalNation(
@@ -186,6 +196,7 @@ data class DiplomacyState(
                 flagEmoji = "🟥",
                 relationshipScore = -15,
                 militaryStrength = 680.0,
+                economicPower = 1.05,
             ),
             RivalNation(
                 id = "southreach",
@@ -193,6 +204,7 @@ data class DiplomacyState(
                 flagEmoji = "🟩",
                 relationshipScore = 10,
                 militaryStrength = 410.0,
+                economicPower = 0.78,
                 hasNonAggressionPact = true,
             ),
             RivalNation(
@@ -201,6 +213,7 @@ data class DiplomacyState(
                 flagEmoji = "🟨",
                 relationshipScore = -55,
                 militaryStrength = 900.0,
+                economicPower = 1.35,
             ),
         )
     }

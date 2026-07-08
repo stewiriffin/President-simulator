@@ -204,18 +204,35 @@ class TradeMarketViewModel(
     // ── Internals ────────────────────────────────────────────────────────────
 
     private fun updateMarketPrices(state: GameState): GameState {
+        val hasMacroEvent = state.diplomacy.activeWar != null
         val updated = state.market.resources.map { resource ->
-            val volatility = resource.commodity.marketVolatility
+            val baseVolatility = resource.commodity.marketVolatility
+            val eventVolatility = if (hasMacroEvent) 0.05 else 0.0
+            val volatility = baseVolatility + eventVolatility
+            
+            // True random walk from currentPrice, not basePrice
             val randomShift = 1.0 + random.nextDouble(-volatility.toDouble(), volatility.toDouble())
-            val demandShift = resource.demandModifier.toDouble()
-            val nextPrice = (
-                resource.commodity.globalBasePrice * randomShift * demandShift
-                ).roundToLong().coerceAtLeast(resource.commodity.globalBasePrice / 4)
+            
+            // Demand slowly normalizes toward 1.0
+            val newDemandModifier = if (resource.demandModifier > 1.0f) {
+                (resource.demandModifier - 0.01f).coerceAtLeast(1.0f)
+            } else if (resource.demandModifier < 1.0f) {
+                (resource.demandModifier + 0.01f).coerceAtMost(1.0f)
+            } else {
+                1.0f
+            }
+
+            val nextPrice = (resource.currentPrice * randomShift * newDemandModifier.toDouble())
+                .roundToLong()
+                .coerceIn(
+                    (resource.commodity.globalBasePrice * 0.25).toLong(),
+                    (resource.commodity.globalBasePrice * 4.0).toLong()
+                )
+
             resource.copy(
                 previousPrice = resource.currentPrice,
                 currentPrice = nextPrice,
-                demandModifier = (resource.demandModifier + random.nextDouble(-0.02, 0.02).toFloat())
-                    .coerceIn(0.6f, 1.5f),
+                demandModifier = newDemandModifier,
             )
         }
         return state.copy(market = MarketState(resources = updated))

@@ -21,9 +21,11 @@ import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,10 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
+import com.presidentsimulator.game.data.DeploymentStatus
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.ui.components.ActiveWarPanel
 import com.presidentsimulator.game.ui.components.NssAlertBanner
+import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssBranchHeader
 import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
@@ -50,6 +54,12 @@ import com.presidentsimulator.game.ui.components.NssRecruitCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.NssUnitCard
 import com.presidentsimulator.game.ui.components.formatMa2Money
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssAccent
 import androidx.compose.material3.MaterialTheme
@@ -87,7 +97,8 @@ fun MilitaryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
         NssScreenHeader(
             title = "Defense",
@@ -108,7 +119,7 @@ fun MilitaryScreen(
                 onLaunchOffensive = viewModel::launchOffensive,
                 onHoldDefensiveLine = viewModel::holdDefensiveLine,
                 onProposeArmistice = viewModel::signArmistice,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = Dimens.ContentPadding, vertical = Dimens.SpacingSmall),
             )
         }
 
@@ -118,13 +129,13 @@ fun MilitaryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(Dimens.ContentPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall),
         ) {
             when (selectedTab) {
                 "FORCES" -> ForcesTab(state)
                 "RECRUITMENT" -> RecruitmentTab(state, viewModel, audio)
-                else -> LogisticsTab(state)
+                else -> LogisticsTab(state, viewModel)
             }
         }
     }
@@ -172,17 +183,17 @@ private fun ForcesTab(state: GameState) {
         else -> NssEmerald
     }
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
         branches.forEach { (name, count, colorIcon) ->
             val (accent, icon) = colorIcon
             val selected = branch == name
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(NssCardShape)
                     .background(if (selected) accent else com.presidentsimulator.game.ui.theme.NssGameCard)
                     .clickable { branch = name }
-                    .padding(14.dp),
+                    .padding(Dimens.ContentPadding - Dimens.SpacingXSmall),
             ) {
                 Icon(icon, contentDescription = null, tint = if (selected) com.presidentsimulator.game.ui.theme.NssOnPhoto else com.presidentsimulator.game.ui.theme.NssMutedForeground, modifier = Modifier.size(20.dp))
                 Text(name, fontWeight = FontWeight.Black, fontSize = 13.sp, color = if (selected) com.presidentsimulator.game.ui.theme.NssOnPhoto else com.presidentsimulator.game.ui.theme.NssForeground, modifier = Modifier.padding(top = 6.dp))
@@ -197,11 +208,11 @@ private fun ForcesTab(state: GameState) {
         fontWeight = FontWeight.Black,
         color = NssPrimary,
         letterSpacing = 3.sp,
-        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = Dimens.SpacingSmall, bottom = Dimens.SpacingXSmall),
     )
 
     activeUnits.chunked(2).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { unit ->
                 NssUnitCard(
                     unitName = unit.name,
@@ -234,13 +245,13 @@ private fun RecruitmentTab(
     val hardwareCost = hardwareQtys.entries.sumOf { (hw, qty) -> hw.unitCost * qty }
     val totalCost = personnelCost + hardwareCost
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .border(1.dp, NssPrimary.copy(alpha = 0.4f))
                 .background(NssPrimary.copy(alpha = 0.08f))
-                .padding(16.dp),
+                .padding(Dimens.ContentPadding),
         ) {
             Text("TOTAL COMMISSION COST", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
             Text(formatMa2Money(totalCost), color = NssPrimary, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
@@ -250,7 +261,7 @@ private fun RecruitmentTab(
                 .weight(1f)
                 .border(1.dp, com.presidentsimulator.game.ui.theme.NssBorder)
                 .background(com.presidentsimulator.game.ui.theme.NssCard)
-                .padding(16.dp),
+                .padding(Dimens.ContentPadding),
         ) {
             Text("AVAILABLE TREASURY", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
             Text(formatMa2Money(state.vitals.budget), color = com.presidentsimulator.game.ui.theme.NssForeground, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
@@ -274,7 +285,7 @@ private fun RecruitmentTab(
 
     NssBranchHeader("HARDWARE", MilitaryHardware.entries.size, NssSky, Icons.Default.Anchor)
     MilitaryHardware.entries.chunked(2).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { hardware ->
                 val qty = hardwareQtys[hardware] ?: 0
                 NssRecruitCard(
@@ -316,7 +327,7 @@ private fun RecruitmentTab(
                 personnelQty = 0
                 hardwareQtys = MilitaryHardware.entries.associateWith { 0 }
             }
-            .padding(vertical = 16.dp),
+            .padding(vertical = Dimens.ContentPadding),
         color = if (totalCost > 0) NssPrimary else com.presidentsimulator.game.ui.theme.NssMutedForeground,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -325,8 +336,13 @@ private fun RecruitmentTab(
 }
 
 @Composable
-private fun LogisticsTab(state: GameState) {
+private fun LogisticsTab(
+    state: GameState,
+    viewModel: GameViewModel,
+) {
     val military = state.military
+    var draftSalary by remember(military.salaryFunding) { mutableFloatStateOf(military.salaryFunding) }
+    val atWar = state.diplomacy.activeWar != null
     val kpis = listOf(
         Triple("TOTAL MAINT COST", military.monthlyUpkeep.toBudgetString(), false),
         Triple("OVERALL READINESS", "${military.morale.roundToInt()}%", true),
@@ -337,11 +353,101 @@ private fun LogisticsTab(state: GameState) {
     )
 
     kpis.chunked(3).forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { (label, value, good) ->
                 NssCompactKpi(label, value, if (good) "Operational" else "Attention needed", good, Modifier.weight(1f))
             }
             repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+        }
+    }
+
+    Text(
+        text = "DEPLOYMENT POSTURE",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Black,
+        color = NssPrimary,
+        letterSpacing = 2.sp,
+        modifier = Modifier.padding(top = Dimens.SpacingSmall),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+        listOf(DeploymentStatus.DEFENSIVE, DeploymentStatus.MOBILIZED).forEach { status ->
+            val selected = military.deployment == status
+            val enabled = status != DeploymentStatus.DEFENSIVE || !atWar
+            Text(
+                text = status.name,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(NssCardShape)
+                    .background(if (selected) NssPrimary else com.presidentsimulator.game.ui.theme.NssGameCard)
+                    .clickable(enabled = enabled) { viewModel.setDeployment(status) }
+                    .padding(vertical = 12.dp),
+                color = when {
+                    !enabled -> com.presidentsimulator.game.ui.theme.NssMutedForeground
+                    selected -> com.presidentsimulator.game.ui.theme.NssOnPhoto
+                    else -> com.presidentsimulator.game.ui.theme.NssForeground
+                },
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+            )
+        }
+    }
+
+    Text(
+        text = "SALARY FUNDING  ${(draftSalary * 100f).roundToInt()}%",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Black,
+        color = NssPrimary,
+        letterSpacing = 2.sp,
+        modifier = Modifier.padding(top = Dimens.SpacingSmall),
+    )
+    Slider(
+        value = draftSalary,
+        onValueChange = { draftSalary = it },
+        onValueChangeFinished = { viewModel.setSalaryFunding(draftSalary) },
+        valueRange = 0.5f..1.5f,
+        colors = androidx.compose.material3.SliderDefaults.colors(
+            thumbColor = NssPrimary,
+            activeTrackColor = NssPrimary,
+        ),
+    )
+    val forecastUpkeep = military.copy(salaryFunding = draftSalary).monthlyUpkeep
+    val forecastMorale = military.copy(salaryFunding = draftSalary).morale
+    Text(
+        text = "Forecast · upkeep ${forecastUpkeep.toBudgetString()} · morale ${forecastMorale.roundToInt()}%",
+        fontSize = 12.sp,
+        color = com.presidentsimulator.game.ui.theme.NssMutedForeground,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+
+    Text(
+        text = "DEFCON",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Black,
+        color = NssPrimary,
+        letterSpacing = 2.sp,
+        modifier = Modifier.padding(top = Dimens.SpacingSmall),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+        (1..5).forEach { level ->
+            val selected = military.defcon == level
+            Text(
+                text = level.toString(),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(NssCardShape)
+                    .background(if (selected) NssPrimary else com.presidentsimulator.game.ui.theme.NssGameCard)
+                    .clickable { viewModel.setDefcon(level) }
+                    .padding(vertical = 12.dp),
+                color = if (selected) {
+                    com.presidentsimulator.game.ui.theme.NssOnPhoto
+                } else {
+                    com.presidentsimulator.game.ui.theme.NssForeground
+                },
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+            )
         }
     }
 

@@ -1,10 +1,12 @@
 package com.presidentsimulator.game.viewmodel
 
 import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.data.Ideology
 import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.data.Law
 import com.presidentsimulator.game.data.LawCatalog
 import com.presidentsimulator.game.data.ProductionState
+import com.presidentsimulator.game.data.PendingLaw
 import kotlin.math.roundToLong
 
 /**
@@ -136,22 +138,77 @@ class ProductionLawViewModel {
     }
 
     /**
-     * Enacts [lawId] if the treasury can pay and approval clears the parliamentary threshold.
+     * Enacts [lawId] if the treasury can pay. If approval clears the parliamentary threshold,
+     * it passes instantly. Otherwise, it is delayed by 3 months.
      */
+    fun setIdeology(state: GameState, ideology: Ideology): GameState {
+        if (state.legal.ideology == ideology) return state
+        val cost = IDEOLOGY_SHIFT_COST
+        if (state.vitals.budget < cost) return state
+        val approvalHit = when (ideology) {
+            Ideology.DEMOCRACY -> 1.5f
+            Ideology.AUTOCRACY -> -6f
+            Ideology.COMMUNISM -> -3f
+        }
+        return state.copy(
+            vitals = state.vitals.copy(
+                budget = state.vitals.budget - cost,
+                approval = (state.vitals.approval + approvalHit).coerceIn(0f, 100f),
+            ),
+            legal = state.legal.copy(ideology = ideology),
+            demographics = state.demographics.withClamp(
+                working = state.demographics.workingClass + when (ideology) {
+                    Ideology.COMMUNISM -> 4f
+                    Ideology.DEMOCRACY -> 1f
+                    Ideology.AUTOCRACY -> -2f
+                },
+                business = state.demographics.businessElite + when (ideology) {
+                    Ideology.AUTOCRACY -> 2f
+                    Ideology.COMMUNISM -> -5f
+                    Ideology.DEMOCRACY -> 1f
+                },
+                mil = state.demographics.military + when (ideology) {
+                    Ideology.AUTOCRACY -> 3f
+                    else -> 0f
+                },
+                academic = state.demographics.academics + when (ideology) {
+                    Ideology.DEMOCRACY -> 2f
+                    Ideology.AUTOCRACY -> -4f
+                    Ideology.COMMUNISM -> 1f
+                },
+                reasons = state.demographics.recentReasons +
+                    "National ideology shifted to ${ideology.displayName}",
+            ),
+        )
+    }
+
     fun enactLaw(state: GameState, lawId: String): GameState {
         val law = LawCatalog.byId(lawId) ?: return state
         if (state.legal.isActive(lawId)) return state
+        if (state.legal.pendingLaws.any { it.lawId == lawId }) return state
         if (state.vitals.budget < law.activationCost) return state
-        if (state.vitals.approval < law.approvalThreshold) return state
 
-        val legal = state.legal.copy(
-            activeLawIds = state.legal.activeLawIds + lawId,
+        // Pay activation cost upfront
+        var nextState = state.copy(
+            vitals = state.vitals.copy(
+                budget = state.vitals.budget - law.activationCost
+            )
         )
 
-        return state.copy(
-            vitals = state.vitals.copy(
-                budget = state.vitals.budget - law.activationCost,
-                approval = (state.vitals.approval + law.approvalModifier * 0.25f)
+        if (state.vitals.approval < law.approvalThreshold) {
+            val legal = nextState.legal.copy(
+                pendingLaws = nextState.legal.pendingLaws + PendingLaw(lawId, true, 3)
+            )
+            return nextState.copy(legal = legal)
+        }
+
+        val legal = nextState.legal.copy(
+            activeLawIds = nextState.legal.activeLawIds + lawId,
+        )
+
+        return nextState.copy(
+            vitals = nextState.vitals.copy(
+                approval = (nextState.vitals.approval + law.approvalModifier * 0.25f)
                     .coerceIn(0f, 100f),
             ),
             legal = legal,
@@ -159,11 +216,19 @@ class ProductionLawViewModel {
     }
 
     /**
-     * Removes [lawId] from the active set, reversing its ongoing influence.
+     * Removes [lawId] from the active set. If approval is low, it is delayed by 3 months.
      */
     fun repealLaw(state: GameState, lawId: String): GameState {
         val law = LawCatalog.byId(lawId) ?: return state
         if (!state.legal.isActive(lawId)) return state
+        if (state.legal.pendingLaws.any { it.lawId == lawId }) return state
+
+        if (state.vitals.approval < law.approvalThreshold) {
+            val legal = state.legal.copy(
+                pendingLaws = state.legal.pendingLaws + PendingLaw(lawId, false, 3)
+            )
+            return state.copy(legal = legal)
+        }
 
         val legal = state.legal.copy(
             activeLawIds = state.legal.activeLawIds.filterNot { it == lawId },
@@ -175,6 +240,102 @@ class ProductionLawViewModel {
                     .coerceIn(0f, 100f),
             ),
             legal = legal,
+        )
+    }
+
+    /** Drop a queued bill. Partial refund only for pending enactments. */
+    fun cancelPendingLaw(state: GameState, lawId: String): GameState {
+        val pending = state.legal.pendingLaws.find { it.lawId == lawId } ?: return state
+        val law = LawCatalog.byId(lawId)
+        val refund = if (pending.enabling && law != null) law.activationCost / 2 else 0L
+        return state.copy(
+            vitals = state.vitals.copy(budget = state.vitals.budget + refund),
+            legal = state.legal.copy(
+                pendingLaws = state.legal.pendingLaws.filterNot { it.lawId == lawId },
+            ),
+        )
+    }
+
+    /** Spend budget to force a pending bill to resolve this month. */
+    fun rushPendingLaw(state: GameState, lawId: String): GameState {
+        val pending = state.legal.pendingLaws.find { it.lawId == lawId } ?: return state
+        if (state.vitals.budget < RUSH_LAW_COST) return state
+        val paid = state.copy(vitals = state.vitals.copy(budget = state.vitals.budget - RUSH_LAW_COST))
+        return resolvePendingLawNow(paid, pending.copy(ticksRemaining = 0))
+    }
+
+    private fun resolvePendingLawNow(state: GameState, pending: PendingLaw): GameState {
+        val law = LawCatalog.byId(pending.lawId) ?: return state.copy(
+            legal = state.legal.copy(pendingLaws = state.legal.pendingLaws.filterNot { it.lawId == pending.lawId }),
+        )
+        val without = state.legal.pendingLaws.filterNot { it.lawId == pending.lawId }
+        return if (pending.enabling) {
+            state.copy(
+                vitals = state.vitals.copy(
+                    approval = (state.vitals.approval + law.approvalModifier * 0.25f).coerceIn(0f, 100f),
+                ),
+                legal = state.legal.copy(
+                    pendingLaws = without,
+                    activeLawIds = state.legal.activeLawIds + pending.lawId,
+                ),
+            )
+        } else {
+            state.copy(
+                vitals = state.vitals.copy(
+                    approval = (state.vitals.approval - law.approvalModifier * 0.15f).coerceIn(0f, 100f),
+                ),
+                legal = state.legal.copy(
+                    pendingLaws = without,
+                    activeLawIds = state.legal.activeLawIds.filterNot { it == pending.lawId },
+                ),
+            )
+        }
+    }
+
+    /**
+     * Processes pending laws, decrementing timers and enacting/repealing when 0.
+     */
+    fun processLawsTick(state: GameState): GameState {
+        if (state.legal.pendingLaws.isEmpty()) return state
+
+        var nextState = state
+        val remainingPending = mutableListOf<PendingLaw>()
+
+        state.legal.pendingLaws.forEach { pending ->
+            val nextTicks = pending.ticksRemaining - 1
+            if (nextTicks <= 0) {
+                // Enact or repeal
+                val law = LawCatalog.byId(pending.lawId) ?: return@forEach
+                if (pending.enabling) {
+                    val legal = nextState.legal.copy(
+                        activeLawIds = nextState.legal.activeLawIds + pending.lawId
+                    )
+                    nextState = nextState.copy(
+                        vitals = nextState.vitals.copy(
+                            approval = (nextState.vitals.approval + law.approvalModifier * 0.25f)
+                                .coerceIn(0f, 100f),
+                        ),
+                        legal = legal
+                    )
+                } else {
+                    val legal = nextState.legal.copy(
+                        activeLawIds = nextState.legal.activeLawIds.filterNot { it == pending.lawId }
+                    )
+                    nextState = nextState.copy(
+                        vitals = nextState.vitals.copy(
+                            approval = (nextState.vitals.approval - law.approvalModifier * 0.15f)
+                                .coerceIn(0f, 100f),
+                        ),
+                        legal = legal
+                    )
+                }
+            } else {
+                remainingPending += pending.copy(ticksRemaining = nextTicks)
+            }
+        }
+
+        return nextState.copy(
+            legal = nextState.legal.copy(pendingLaws = remainingPending)
         )
     }
 
@@ -210,6 +371,8 @@ class ProductionLawViewModel {
     }
 
     companion object {
+        const val IDEOLOGY_SHIFT_COST = 8_000_000_000L
+        const val RUSH_LAW_COST = 4_000_000_000L
         const val ENERGY_PER_PLANT = 120L
         const val ENERGY_PER_PLANT_IDLE = 5L
         const val ENERGY_PER_FACTORY = 18L

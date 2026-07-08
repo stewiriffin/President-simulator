@@ -157,10 +157,11 @@ data class CovertMission(
 }
 
 /**
- * Terminal outcome when domestic control collapses.
+ * Terminal campaign outcome (coup loss, election loss, or victory).
  */
 @Serializable
 data class GameOverState(
     val isGameOver: Boolean = false,
+    val isVictory: Boolean = false,
     val reason: String = "",
 )

@@ -1,6 +1,8 @@
 package com.presidentsimulator.game.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -8,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
@@ -107,6 +110,14 @@ private val NssTypography = Typography(
     ),
 )
 
+private val NssShapes = Shapes(
+    extraSmall = RoundedCornerShape(Dimens.BadgeCorner),
+    small = RoundedCornerShape(Dimens.PillCorner),
+    medium = RoundedCornerShape(Dimens.CardRadius),
+    large = RoundedCornerShape(Dimens.CardRadius),
+    extraLarge = RoundedCornerShape(28.dp),
+)
+
 @Composable
 fun PresidentSimulatorTheme(
     content: @Composable () -> Unit,
@@ -114,6 +125,7 @@ fun PresidentSimulatorTheme(
     MaterialTheme(
         colorScheme = NssColors,
         typography = NssTypography,
+        shapes = NssShapes,
         content = content,
     )
 }

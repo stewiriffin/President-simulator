@@ -85,9 +85,17 @@ data class Law(
 )
 
 @Serializable
+data class PendingLaw(
+    val lawId: String,
+    val enabling: Boolean,
+    val ticksRemaining: Int,
+)
+
+@Serializable
 data class LegalState(
     val ideology: Ideology = Ideology.DEMOCRACY,
     val activeLawIds: List<String> = emptyList(),
+    val pendingLaws: List<PendingLaw> = emptyList(),
 ) {
     val activeLaws: List<Law>
         get() = activeLawIds.mapNotNull { LawCatalog.byId(it) }
@@ -255,6 +263,68 @@ object LawCatalog {
             approvalModifier = -12f,
             productionModifier = 0.92f,
             foodDemandModifier = 1.05f,
+        ),
+        Law(
+            id = "national_housing_act",
+            name = "National Housing Act",
+            description = "Subsidizes affordable housing construction and rent assistance nationwide.",
+            category = LawCategory.SOCIAL,
+            activationCost = 7_000_000_000L,
+            upkeepCost = 1_400_000_000L,
+            approvalThreshold = 42f,
+            approvalModifier = 7f,
+            productionModifier = 0.99f,
+            energyDemandModifier = 1.03f,
+        ),
+        Law(
+            id = "export_stimulus_act",
+            name = "Export Stimulus Act",
+            description = "Tax credits and logistics funding to boost manufacturing exports.",
+            category = LawCategory.ECONOMIC,
+            activationCost = 4_500_000_000L,
+            upkeepCost = 1_100_000_000L,
+            approvalThreshold = 36f,
+            approvalModifier = 1f,
+            productionModifier = 1.12f,
+            energyDemandModifier = 1.06f,
+        ),
+        Law(
+            id = "veterans_support_act",
+            name = "Veterans Support Act",
+            description = "Guarantees healthcare, housing, and re-training for discharged service members.",
+            category = LawCategory.MILITARY,
+            activationCost = 3_000_000_000L,
+            upkeepCost = 900_000_000L,
+            approvalThreshold = 44f,
+            approvalModifier = 5f,
+            productionModifier = 1.01f,
+            militaryRecruitModifier = 1.08f,
+        ),
+        Law(
+            id = "public_works_program",
+            name = "Public Works Program",
+            description = "Mass infrastructure employment funding roads, transit, and civic buildings.",
+            category = LawCategory.SOCIAL,
+            activationCost = 5_500_000_000L,
+            upkeepCost = 1_250_000_000L,
+            approvalThreshold = 40f,
+            approvalModifier = 6f,
+            productionModifier = 1.05f,
+            energyDemandModifier = 1.04f,
+        ),
+        Law(
+            id = "strategic_reserves_act",
+            name = "Strategic Reserves Act",
+            description = "Stockpiles critical materials and fuels for wartime and crisis resilience.",
+            category = LawCategory.MILITARY,
+            activationCost = 4_000_000_000L,
+            upkeepCost = 1_000_000_000L,
+            approvalThreshold = 37f,
+            approvalModifier = 2f,
+            productionModifier = 0.98f,
+            foodDemandModifier = 1.04f,
+            energyDemandModifier = 1.05f,
+            militaryRecruitModifier = 1.05f,
         ),
     )
 

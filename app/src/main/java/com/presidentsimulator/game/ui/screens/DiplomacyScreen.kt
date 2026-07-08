@@ -32,6 +32,7 @@ import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeType
+import com.presidentsimulator.game.data.TreatyType
 import com.presidentsimulator.game.ui.components.ActiveWarPanel
 import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCard
@@ -51,6 +52,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssForeground
@@ -77,7 +84,8 @@ fun DiplomacyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(NssBackground),
+            .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
         NssScreenHeader(
             title = "Foreign Affairs",
@@ -98,7 +106,7 @@ fun DiplomacyScreen(
                 onLaunchOffensive = viewModel::launchOffensive,
                 onHoldDefensiveLine = viewModel::holdDefensiveLine,
                 onProposeArmistice = viewModel::signArmistice,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = Dimens.ContentPadding, vertical = Dimens.SpacingSmall),
             )
         }
 
@@ -108,7 +116,7 @@ fun DiplomacyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (selectedTab) {
@@ -147,6 +155,14 @@ fun DiplomacyScreen(
                             onProposeTradeDeal = {
                                 viewModel.proposeTradeDeal(rival.id, TradeCommodity.GRAIN, 100L, TradeType.EXPORT)
                             },
+                            onSendAid = { viewModel.sendForeignAid(rival.id) },
+                            onStateVisit = { viewModel.conductStateVisit(rival.id) },
+                            onNegotiateTradeTreaty = {
+                                viewModel.negotiateTreaty(rival.id, TreatyType.TRADE)
+                            },
+                            onNegotiateNonAggression = {
+                                viewModel.negotiateTreaty(rival.id, TreatyType.NON_AGGRESSION)
+                            },
                             onFormAlliance = {
                                 viewModel.formAlliance("Pact with ${rival.name}", listOf(rival.id))
                             },
@@ -156,35 +172,59 @@ fun DiplomacyScreen(
                 }
 
                 "TREATIES" -> {
-                    state.diplomacy.rivals.filter { it.hasTradeTreaty || it.hasNonAggressionPact }.chunked(2).forEach { row ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { rival ->
-                                NssStripPhotoCard(
-                                    imageUrl = NssCardImages.BANNER_FOREIGN,
-                                    fallbackGradient = NssGradients.Foreign,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
-                                    Text(
-                                        if (rival.hasTradeTreaty) "Free Trade Agreement" else "Non-Aggression Pact",
-                                        color = NssMutedForeground,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(vertical = 4.dp),
-                                    )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        NssBadge(if (rival.hasTradeTreaty) "TRADE" else "DEFENSE")
-                                        NssBadge("ACTIVE", large = true)
+                    state.diplomacy.rivals.filter { it.hasTradeTreaty || it.hasNonAggressionPact }.forEach { rival ->
+                        NssStripPhotoCard(
+                            imageUrl = NssCardImages.BANNER_FOREIGN,
+                            fallbackGradient = NssGradients.Foreign,
+                        ) {
+                            Text(rival.name, color = NssForeground, fontWeight = FontWeight.Bold)
+                            val treatyLabel = when {
+                                rival.hasTradeTreaty && rival.hasNonAggressionPact -> "Trade + Non-Aggression"
+                                rival.hasTradeTreaty -> "Free Trade Agreement"
+                                else -> "Non-Aggression Pact"
+                            }
+                            Text(
+                                treatyLabel,
+                                color = NssMutedForeground,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (rival.hasTradeTreaty) NssBadge("TRADE")
+                                if (rival.hasNonAggressionPact) NssBadge("NAP")
+                                NssBadge("ACTIVE", large = true)
+                            }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 10.dp),
+                            ) {
+                                if (rival.hasTradeTreaty) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.breakTreaty(rival.id, TreatyType.TRADE) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text("Break Trade")
+                                    }
+                                }
+                                if (rival.hasNonAggressionPact) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.breakTreaty(rival.id, TreatyType.NON_AGGRESSION) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text("Break NAP")
                                     }
                                 }
                             }
-                            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
 
                 "NEGOTIATIONS" -> {
-                    state.diplomacy.rivals.filter { it.relationshipScore in 20..80 }.forEach { rival ->
+                    state.diplomacy.rivals.forEach { rival ->
                         val progress = rival.relationshipScore
+                        val warActive = activeWar != null
+                        val canTradeDeal = TradeMarketViewModel.canProposeDeal(state, rival.id)
+                        val canTreaty = !warActive && rival.relationshipScore >= 35
                         NssStripPhotoCard(
                             imageUrl = NssCardImages.BANNER_FOREIGN,
                             fallbackGradient = NssGradients.Foreign,
@@ -202,6 +242,50 @@ fun DiplomacyScreen(
                                 Text("PROGRESS", style = MaterialTheme.typography.labelSmall, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
                                 NssProgressBar(percent = progress.toFloat(), color = prgColor(progress), thick = true, modifier = Modifier.weight(1f))
                                 Text("$progress%", color = relationTextColor(progress), fontWeight = FontWeight.Bold)
+                            }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 10.dp),
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.proposeTradeDeal(rival.id, TradeCommodity.GRAIN, 100L, TradeType.EXPORT)
+                                    },
+                                    enabled = canTradeDeal && !warActive,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Propose Grain Export")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.sendForeignAid(rival.id) },
+                                    enabled = !warActive && state.vitals.budget >= DiplomacyViewModel.FOREIGN_AID_COST,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Send Foreign Aid")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.conductStateVisit(rival.id) },
+                                    enabled = !warActive &&
+                                        state.vitals.budget >= DiplomacyViewModel.STATE_VISIT_BUDGET_COST &&
+                                        state.diplomacy.diplomaticInfluence >= DiplomacyViewModel.STATE_VISIT_INFLUENCE_COST,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Conduct State Visit")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.negotiateTreaty(rival.id, TreatyType.TRADE) },
+                                    enabled = canTreaty && !rival.hasTradeTreaty,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (rival.hasTradeTreaty) "Trade Treaty Active" else "Negotiate Trade")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.negotiateTreaty(rival.id, TreatyType.NON_AGGRESSION) },
+                                    enabled = canTreaty && !rival.hasNonAggressionPact,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (rival.hasNonAggressionPact) "NAP Active" else "Negotiate Non-Aggression")
+                                }
                             }
                         }
                     }
@@ -246,6 +330,10 @@ private fun RivalActionPanel(
     warActive: Boolean,
     isWarTarget: Boolean,
     onProposeTradeDeal: () -> Unit,
+    onSendAid: () -> Unit,
+    onStateVisit: () -> Unit,
+    onNegotiateTradeTreaty: () -> Unit,
+    onNegotiateNonAggression: () -> Unit,
     onFormAlliance: () -> Unit,
     onDeclareWar: () -> Unit,
 ) {
@@ -254,6 +342,11 @@ private fun RivalActionPanel(
         state.diplomacy.activeWar?.targetCountryId != rival.id &&
         state.governance.diplomaticInfluence >= GovernanceViewModel.ALLIANCE_INFLUENCE_COST
     val canWar = DiplomacyViewModel.canDeclareWar(state, rival.id)
+    val canTreaty = !warActive && rival.relationshipScore >= 35
+    val canAid = !warActive && state.vitals.budget >= DiplomacyViewModel.FOREIGN_AID_COST
+    val canVisit = !warActive &&
+        state.vitals.budget >= DiplomacyViewModel.STATE_VISIT_BUDGET_COST &&
+        state.diplomacy.diplomaticInfluence >= DiplomacyViewModel.STATE_VISIT_INFLUENCE_COST
 
     NssCard {
         Text("Actions — ${rival.name}", color = NssPrimary, fontWeight = FontWeight.Bold)
@@ -263,7 +356,27 @@ private fun RivalActionPanel(
                     Text("Active war in progress.", color = NssRed, fontWeight = FontWeight.SemiBold)
                 } else {
                     OutlinedButton(onClick = onProposeTradeDeal, enabled = canTrade && !warActive, modifier = Modifier.fillMaxWidth()) {
-                        Text("Propose Trade Deal")
+                        Text("Propose Grain Export")
+                    }
+                    OutlinedButton(onClick = onSendAid, enabled = canAid, modifier = Modifier.fillMaxWidth()) {
+                        Text("Send Foreign Aid")
+                    }
+                    OutlinedButton(onClick = onStateVisit, enabled = canVisit, modifier = Modifier.fillMaxWidth()) {
+                        Text("Conduct State Visit")
+                    }
+                    OutlinedButton(
+                        onClick = onNegotiateTradeTreaty,
+                        enabled = canTreaty && !rival.hasTradeTreaty,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (rival.hasTradeTreaty) "Trade Treaty Active" else "Negotiate Trade Treaty")
+                    }
+                    OutlinedButton(
+                        onClick = onNegotiateNonAggression,
+                        enabled = canTreaty && !rival.hasNonAggressionPact,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (rival.hasNonAggressionPact) "NAP Active" else "Negotiate Non-Aggression")
                     }
                     OutlinedButton(onClick = onFormAlliance, enabled = canAlliance, modifier = Modifier.fillMaxWidth()) {
                         Text("Form Alliance")
@@ -285,11 +398,13 @@ private fun RivalActionPanel(
     }
 }
 
-private fun rivalFlagEmoji(rival: RivalNation): String = when {
-    rival.relationshipScore >= 70 -> "🟦"
-    rival.relationshipScore >= 40 -> "🟩"
-    rival.relationshipScore >= 20 -> "⬜"
-    else -> "🔴"
+private fun rivalFlagEmoji(rival: RivalNation): String = rival.flagEmoji.ifBlank {
+    when {
+        rival.relationshipScore >= 70 -> "🟦"
+        rival.relationshipScore >= 40 -> "🟩"
+        rival.relationshipScore >= 20 -> "⬜"
+        else -> "🔴"
+    }
 }
 
 private fun rivalStatus(rival: RivalNation): String = when {

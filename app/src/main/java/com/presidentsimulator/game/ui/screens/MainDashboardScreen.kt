@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Groups
@@ -56,12 +57,20 @@ import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
+import com.presidentsimulator.game.ui.components.HeroHeaderScrim
+import com.presidentsimulator.game.ui.components.StripHeaderBottomScrim
 import com.presidentsimulator.game.ui.components.NssPhotoHeader
 import com.presidentsimulator.game.ui.components.collectAlertCount
 import com.presidentsimulator.game.ui.components.collectAlerts
 import com.presidentsimulator.game.ui.components.formatCompactMoney
 import com.presidentsimulator.game.ui.navigation.GameDestination
 import com.presidentsimulator.game.ui.theme.NssAccent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
@@ -83,7 +92,9 @@ fun MainDashboardScreen(
     onNavigate: (GameDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gdp = remember(state) { AnalyticsSaveViewModel().calculateGDP(state) }
+    val analytics = remember { AnalyticsSaveViewModel() }
+    val gdp = remember(state) { analytics.calculateGDP(state) }
+    val worldRank = remember(state) { analytics.worldEconomicRank(state) }
     val stability = (100f - state.internalSecurity.instabilityScore).coerceIn(0f, 100f)
     val milPower = state.effectiveCombatStrength.roundToInt()
     val alertCount = collectAlertCount(state)
@@ -94,23 +105,20 @@ fun MainDashboardScreen(
         modifier = modifier
             .fillMaxSize()
             .background(NssBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
             .verticalScroll(rememberScrollState()),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(208.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(Dimens.DashboardHeroHeight)) {
             NssPhotoHeader(
                 imageUrl = NssCardImages.MAP,
                 fallbackGradient = listOf(NssPrimary.copy(alpha = 0.5f), NssBackground),
                 modifier = Modifier.matchParentSize(),
-                scrimTopToBottom = listOf(
-                    NssPrimary.copy(alpha = 0.35f),
-                    Color.Transparent,
-                    NssBackground.copy(alpha = 0.88f),
-                ),
+                scrimTopToBottom = HeroHeaderScrim,
             )
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = Dimens.SpacingLarge, vertical = Dimens.ContentPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -133,28 +141,28 @@ fun MainDashboardScreen(
                     fontSize = 13.sp,
                     color = NssOnPhoto.copy(alpha = 0.8f),
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = Dimens.SpacingXSmall),
                 )
                 Row(
-                    modifier = Modifier.padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = Dimens.SpacingSmall + Dimens.SpacingXSmall),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap),
                 ) {
                     HeroBadge("⚔ $alertCount Active Events", NssAccent)
-                    HeroBadge("👑 Rank #14", NssOnPhoto.copy(alpha = 0.2f), border = true)
+                    HeroBadge("👑 Rank #$worldRank", NssOnPhoto.copy(alpha = 0.2f), border = true)
                 }
             }
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            modifier = Modifier.padding(horizontal = Dimens.ContentPadding, vertical = Dimens.ContentPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SectionGap),
         ) {
             DashboardSection(
                 title = "Empire Status",
                 subtitle = "Turn ${state.year}.$quarter",
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
                         GameVitalCard(
                             icon = Icons.Default.AttachMoney,
                             label = "Treasury",
@@ -260,7 +268,8 @@ fun MainDashboardScreen(
                             subtitle = "Policy & society",
                             imageUrl = NssCardImages.BANNER_DOMESTIC,
                             icon = Icons.Default.AccountBalance,
-                            badge = null,
+                            badge = state.legal.pendingLaws.size.takeIf { it > 0 }?.let { "$it Pending" },
+                            badgeColor = Color(0xFFF59E0B),
                             onClick = { onNavigate(GameDestination.LawsSociety) },
                             modifier = Modifier.weight(1f),
                         )
@@ -276,6 +285,8 @@ fun MainDashboardScreen(
                             subtitle = "Research",
                             imageUrl = NssCardImages.BANNER_SCIENCE,
                             icon = Icons.Default.Science,
+                            badge = scienceMinistryBadge(state),
+                            badgeColor = Color(0xFF3B82F6),
                             onClick = { onNavigate(GameDestination.Science) },
                             modifier = Modifier.weight(1f),
                         )
@@ -284,7 +295,11 @@ fun MainDashboardScreen(
                             subtitle = "Classified",
                             imageUrl = NssCardImages.BANNER_INTELLIGENCE,
                             icon = Icons.Default.Shield,
-                            badge = "Locked",
+                            badge = if (state.espionage.activeMissionCount > 0) {
+                                "${state.espionage.activeMissionCount} Ops"
+                            } else {
+                                null
+                            },
                             badgeColor = Color(0xFF57534E),
                             onClick = { onNavigate(GameDestination.SecretService) },
                             modifier = Modifier.weight(1f),
@@ -296,15 +311,35 @@ fun MainDashboardScreen(
                             subtitle = "Global vote",
                             imageUrl = NssCardImages.BANNER_FOREIGN,
                             icon = Icons.Default.Gavel,
+                            badge = if (state.governance.activeResolution != null) "Vote" else null,
+                            badgeColor = Color(0xFF8B5CF6),
                             onClick = { onNavigate(GameDestination.Governance) },
                             modifier = Modifier.weight(1f),
                         )
                         MinistryTile(
                             label = "Settings",
-                            subtitle = "Audio",
+                            subtitle = "Audio & saves",
                             imageUrl = NssCardImages.BANNER_COMMAND,
                             icon = Icons.Default.Settings,
                             onClick = { onNavigate(GameDestination.AudioSettings) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MinistryTile(
+                            label = "Analytics",
+                            subtitle = "History & saves",
+                            imageUrl = NssCardImages.BANNER_ECONOMY,
+                            icon = Icons.Default.Analytics,
+                            onClick = { onNavigate(GameDestination.Analytics) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        MinistryTile(
+                            label = "Demographics",
+                            subtitle = "Approval blocs",
+                            imageUrl = NssCardImages.BANNER_DOMESTIC,
+                            icon = Icons.Default.Groups,
+                            onClick = { onNavigate(GameDestination.Demographics) },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -319,6 +354,15 @@ private fun budgetPct(state: GameState): Float {
     return (budget.toFloat() / (budget + budget.coerceAtLeast(1L)) * 100f).coerceIn(20f, 100f)
 }
 
+private fun scienceMinistryBadge(state: GameState): String? {
+    val research = state.research
+    return when {
+        research.activeTechnology != null && research.progressPercent() >= 80f -> "Near done"
+        research.activeTechnology == null && research.sciencePoints >= 150L -> "Ready"
+        else -> null
+    }
+}
+
 @Composable
 private fun HeroBadge(text: String, bg: Color, border: Boolean = false) {
     Text(
@@ -327,7 +371,7 @@ private fun HeroBadge(text: String, bg: Color, border: Boolean = false) {
             .clip(RoundedCornerShape(50))
             .background(bg)
             .then(if (border) Modifier.border(1.dp, NssOnPhoto.copy(alpha = 0.3f), RoundedCornerShape(50)) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = Dimens.SpacingSmall + Dimens.SpacingXSmall, vertical = Dimens.SpacingXSmall),
         color = NssOnPhoto,
         fontSize = 10.sp,
         fontWeight = FontWeight.Black,
@@ -386,8 +430,8 @@ private fun GameVitalCard(
             .clip(NssCardShape)
             .background(NssGameCard)
             .then(if (warn) Modifier.border(2.dp, Color(0xFFFDE68A), NssCardShape) else Modifier)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(Dimens.ContentPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.GridGap),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -531,7 +575,7 @@ private fun HorizontalSituationCard(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(14.dp),
+                .padding(Dimens.ContentPadding - Dimens.SpacingXSmall),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
@@ -570,7 +614,7 @@ private fun HorizontalSituationCard(
                     .clip(RoundedCornerShape(10.dp))
                     .background(situation.accentColor)
                     .clickable(onClick = onAction)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = Dimens.SpacingSmall + Dimens.SpacingXSmall, vertical = 6.dp),
                 color = NssOnPhoto,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
@@ -601,14 +645,14 @@ private fun MinistryTile(
                 imageUrl = imageUrl,
                 fallbackGradient = listOf(NssPrimary.copy(alpha = 0.3f), NssGameCard),
                 modifier = Modifier.matchParentSize(),
-                scrimTopToBottom = listOf(Color.Transparent, NssPrimary.copy(alpha = 0.55f)),
+                scrimTopToBottom = StripHeaderBottomScrim,
             )
             if (badge != null) {
                 Text(
                     text = badge,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(Dimens.SpacingSmall)
                         .clip(RoundedCornerShape(50))
                         .background(badgeColor)
                         .padding(horizontal = 8.dp, vertical = 2.dp),
@@ -623,14 +667,14 @@ private fun MinistryTile(
                 tint = NssOnPhoto,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(10.dp)
+                    .padding(Dimens.SpacingSmall + 2.dp)
                     .size(20.dp),
             )
         }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = Dimens.SpacingSmall + Dimens.SpacingXSmall, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

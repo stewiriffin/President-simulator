@@ -7,6 +7,7 @@ import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MissionStatus
 import com.presidentsimulator.game.data.MissionType
 import com.presidentsimulator.game.data.SecurityProtocol
+import com.presidentsimulator.game.data.TechCatalog
 import java.util.UUID
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -279,18 +280,34 @@ class EspionageSecurityViewModel(
     private fun applyMissionSuccess(state: GameState, mission: CovertMission): GameState {
         val rival = state.diplomacy.rivalById(mission.targetCountryId) ?: return state
         return when (mission.missionType) {
-            MissionType.STEAL_TECHNOLOGY -> state.copy(
-                production = state.production.copy(
-                    materials = state.production.materials + 400L,
-                    goods = state.production.goods + 200L,
-                ),
-                espionage = state.espionage.copy(
-                    intelligencePoints = state.espionage.intelligencePoints + 12,
-                ),
-                economy = state.economy.copy(
-                    factories = state.economy.factories + 1,
-                ),
-            )
+            MissionType.STEAL_TECHNOLOGY -> {
+                val stealable = TechCatalog.all.filter { tech ->
+                    !state.research.isUnlocked(tech.id) &&
+                        state.research.prerequisitesMet(tech) &&
+                        !(tech.id == "nuclear_fission" && state.governance.nuclearEmbargoActive)
+                }
+                val stolen = stealable.randomOrNull(random)
+                if (stolen != null) {
+                    state.copy(
+                        research = state.research.copy(
+                            unlockedTechIds = state.research.unlockedTechIds + stolen.id,
+                            sciencePoints = state.research.sciencePoints + 25L,
+                        ),
+                        espionage = state.espionage.copy(
+                            intelligencePoints = state.espionage.intelligencePoints + 12,
+                        ),
+                    )
+                } else {
+                    state.copy(
+                        research = state.research.copy(
+                            sciencePoints = state.research.sciencePoints + 80L,
+                        ),
+                        espionage = state.espionage.copy(
+                            intelligencePoints = state.espionage.intelligencePoints + 16,
+                        ),
+                    )
+                }
+            }
             MissionType.SABOTAGE_ECONOMY -> state.copy(
                 diplomacy = state.diplomacy.updateRival(rival.id) {
                     it.copy(

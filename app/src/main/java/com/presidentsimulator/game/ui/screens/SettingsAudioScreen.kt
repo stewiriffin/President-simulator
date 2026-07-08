@@ -18,6 +18,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,16 +41,26 @@ import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.theme.NssAccent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
+import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.NssRed
+import com.presidentsimulator.game.viewmodel.GameViewModel
 import kotlin.math.roundToInt
 
 @Composable
 fun SettingsAudioScreen(
+    viewModel: GameViewModel? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -65,7 +76,7 @@ fun SettingsAudioScreen(
     val loadedHandles = remember(diagnosticsTick) { audio.loadedSfxHandles }
     val currentTrack = remember(diagnosticsTick) { audio.currentBgmTrack }
 
-    Column(modifier = modifier.fillMaxSize().background(NssBackground)) {
+    Column(modifier = modifier.fillMaxSize().background(NssBackground).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
         NssScreenHeader(
             title = "Settings",
             imageUrl = NssCardImages.BANNER_COMMAND,
@@ -81,7 +92,7 @@ fun SettingsAudioScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             NssPanel(modifier = Modifier.fillMaxWidth()) {
@@ -146,11 +157,119 @@ fun SettingsAudioScreen(
                     Text("No events yet.", fontSize = 11.sp, color = NssMutedForeground)
                 } else {
                     diagnostics.take(16).forEach { line ->
-                        Text(line, fontSize = 10.sp, color = NssMutedForeground)
+                        Text(line, fontSize = 11.sp, color = NssMutedForeground)
                     }
                 }
             }
+
+            if (viewModel != null) {
+                SettingsSavePanel(viewModel = viewModel)
+            }
         }
+    }
+}
+
+@Composable
+private fun SettingsSavePanel(viewModel: GameViewModel) {
+    val feedback by viewModel.saveLoadFeedback.collectAsState()
+    val hasSave by viewModel.hasSave.collectAsState()
+    val slots = viewModel.listSaveSlots()
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("SAVE / LOAD", fontWeight = FontWeight.Black, fontSize = 14.sp, color = NssForeground)
+        Text(
+            text = "Autosave plus three manual slots. Also available from Analytics.",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+        )
+        Text(
+            text = "SAVE AUTOSAVE",
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(NssCardShape)
+                .background(NssPrimary)
+                .clickable { viewModel.saveGameProgress() }
+                .padding(vertical = 12.dp),
+            color = NssOnPhoto,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = if (hasSave) "LOAD AUTOSAVE" else "LOAD AUTOSAVE (NONE)",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .clip(NssCardShape)
+                .background(NssBorder)
+                .clickable(enabled = hasSave) { viewModel.loadLastAutomatedSave() }
+                .padding(vertical = 12.dp),
+            color = NssForeground,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = "MANUAL SLOTS",
+            fontWeight = FontWeight.Black,
+            fontSize = 11.sp,
+            color = NssPrimary,
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
+        )
+        slots.forEach { slot ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "SAVE ${slot.slotIndex}",
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(NssCardShape)
+                        .background(NssPrimary.copy(alpha = 0.85f))
+                        .clickable { viewModel.saveToSlot(slot.slotIndex) }
+                        .padding(vertical = 10.dp),
+                    color = NssOnPhoto,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = if (slot.occupied) "LOAD ${slot.slotIndex}" else "EMPTY",
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(NssCardShape)
+                        .background(if (slot.occupied) NssBorder else NssBorder.copy(alpha = 0.4f))
+                        .clickable(enabled = slot.occupied) { viewModel.loadFromSlot(slot.slotIndex) }
+                        .padding(vertical = 10.dp),
+                    color = NssForeground,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            if (slot.occupied) {
+                Text(
+                    text = slot.label,
+                    fontSize = 11.sp,
+                    color = NssMutedForeground,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        Text(
+            text = feedback.message.ifBlank { "Ready." },
+            fontSize = 12.sp,
+            color = when {
+                feedback.success -> NssEmerald
+                feedback.message.contains("fail", ignoreCase = true) -> NssRed
+                else -> NssMutedForeground
+            },
+            modifier = Modifier.padding(top = 10.dp),
+        )
     }
 }
 

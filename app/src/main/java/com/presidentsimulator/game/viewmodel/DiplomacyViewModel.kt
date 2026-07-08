@@ -125,15 +125,20 @@ class DiplomacyViewModel(
         val playerWonSkirmish = random.nextFloat() < winProbability
 
         val swing = random.nextInt(4, 13).toFloat()
-        val progressDelta = if (playerWonSkirmish) swing else -swing
+        val tacticMultiplier = if (war.currentTactic == com.presidentsimulator.game.data.WarTactic.OFFENSIVE) 1.5f else 0.5f
+        
+        val progressDelta = (if (playerWonSkirmish) swing else -swing) * tacticMultiplier
         val nextProgress = (war.warProgress + progressDelta).coerceIn(-100f, 100f)
 
         val playerLossRate = if (playerWonSkirmish) 0.004 else 0.012
         val enemyLossRate = if (playerWonSkirmish) 0.014 else 0.005
-        val playerCasualties = (state.military.personnel * playerLossRate)
+        
+        val casualtyMultiplier = if (war.currentTactic == com.presidentsimulator.game.data.WarTactic.OFFENSIVE) 1.5 else 0.5
+
+        val playerCasualties = (state.military.personnel * playerLossRate * casualtyMultiplier)
             .toLong()
             .coerceAtLeast(500L)
-        val enemyCasualties = (enemy.militaryStrength * 800 * enemyLossRate)
+        val enemyCasualties = (enemy.militaryStrength * 800 * enemyLossRate * casualtyMultiplier)
             .toLong()
             .coerceAtLeast(400L)
 
@@ -271,6 +276,103 @@ class DiplomacyViewModel(
         )
     }
 
+    /**
+     * Cancels an existing trade or non-aggression treaty with diplomatic fallout.
+     */
+    fun breakTreaty(state: GameState, targetCountryId: String, type: TreatyType): GameState {
+        if (type == TreatyType.PEACE) return state
+        val rival = state.diplomacy.rivalById(targetCountryId) ?: return state
+        val updatedRival = when (type) {
+            TreatyType.TRADE -> {
+                if (!rival.hasTradeTreaty) return state
+                rival.copy(
+                    hasTradeTreaty = false,
+                    relationshipScore = (rival.relationshipScore - 12).coerceIn(-100, 100),
+                )
+            }
+            TreatyType.NON_AGGRESSION -> {
+                if (!rival.hasNonAggressionPact) return state
+                rival.copy(
+                    hasNonAggressionPact = false,
+                    relationshipScore = (rival.relationshipScore - 18).coerceIn(-100, 100),
+                )
+            }
+            TreatyType.PEACE -> rival
+        }
+        return state.copy(
+            vitals = state.vitals.copy(
+                approval = (state.vitals.approval - 1.5f).coerceIn(0f, 100f),
+            ),
+            diplomacy = state.diplomacy
+                .updateRival(targetCountryId) { updatedRival }
+                .copy(
+                    diplomaticInfluence = (state.diplomacy.diplomaticInfluence - 5).coerceAtLeast(0),
+                ),
+        )
+    }
+
+    fun setDefcon(state: GameState, level: Int): GameState {
+        val next = level.coerceIn(1, 5)
+        if (next == state.military.defcon) return state
+        val delta = next - state.military.defcon
+        val approvalHit = if (delta < 0) delta * 1.5f else delta * 0.5f
+        return state.copy(
+            military = state.military.copy(defcon = next),
+            vitals = state.vitals.copy(
+                approval = (state.vitals.approval + approvalHit).coerceIn(0f, 100f),
+            ),
+            internalSecurity = state.internalSecurity.copy(
+                instabilityScore = (
+                    state.internalSecurity.instabilityScore + if (delta < 0) 1.5f * -delta else -0.5f * delta
+                    ).coerceIn(0f, 100f),
+            ),
+        )
+    }
+
+    /** Soft-power grant: spend budget to improve relations. */
+    fun sendForeignAid(state: GameState, targetCountryId: String): GameState {
+        if (state.gameOver.isGameOver) return state
+        if (state.diplomacy.rivalById(targetCountryId) == null) return state
+        if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return state
+        if (state.vitals.budget < FOREIGN_AID_COST) return state
+        return state.copy(
+            vitals = state.vitals.copy(
+                budget = state.vitals.budget - FOREIGN_AID_COST,
+                approval = (state.vitals.approval + 0.5f).coerceIn(0f, 100f),
+            ),
+            diplomacy = state.diplomacy
+                .updateRival(targetCountryId) {
+                    it.copy(relationshipScore = (it.relationshipScore + FOREIGN_AID_REL_BONUS).coerceIn(-100, 100))
+                }
+                .copy(
+                    diplomaticInfluence = (state.diplomacy.diplomaticInfluence + 2).coerceAtMost(100),
+                ),
+        )
+    }
+
+    /** High-profile visit: spend influence for a larger relationship swing. */
+    fun conductStateVisit(state: GameState, targetCountryId: String): GameState {
+        if (state.gameOver.isGameOver) return state
+        if (state.diplomacy.rivalById(targetCountryId) == null) return state
+        if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return state
+        if (state.diplomacy.diplomaticInfluence < STATE_VISIT_INFLUENCE_COST) return state
+        if (state.vitals.budget < STATE_VISIT_BUDGET_COST) return state
+        return state.copy(
+            vitals = state.vitals.copy(
+                budget = state.vitals.budget - STATE_VISIT_BUDGET_COST,
+                approval = (state.vitals.approval + 1f).coerceIn(0f, 100f),
+            ),
+            diplomacy = state.diplomacy
+                .updateRival(targetCountryId) {
+                    it.copy(relationshipScore = (it.relationshipScore + STATE_VISIT_REL_BONUS).coerceIn(-100, 100))
+                }
+                .copy(
+                    diplomaticInfluence = (state.diplomacy.diplomaticInfluence - STATE_VISIT_INFLUENCE_COST)
+                        .coerceAtLeast(0),
+                ),
+        )
+    }
+
     fun setDeployment(state: GameState, status: DeploymentStatus): GameState {
         return state.copy(military = state.military.copy(deployment = status))
     }
@@ -338,33 +440,27 @@ class DiplomacyViewModel(
         )
     }
 
-    /** Push an offensive: mobilize and gain a small immediate war-progress swing. */
+    /** Press attack: increases casualties but increases chance of taking ground. */
     fun launchOffensive(state: GameState): GameState {
         val war = state.diplomacy.activeWar ?: return state
         return state.copy(
-            military = state.military.copy(
-                deployment = DeploymentStatus.MOBILIZED,
-                defcon = (state.military.defcon - 1).coerceIn(1, 5),
-            ),
+            military = state.military.copy(deployment = DeploymentStatus.MOBILIZED),
             diplomacy = state.diplomacy.copy(
                 activeWar = war.copy(
-                    warProgress = (war.warProgress + 4f).coerceIn(-100f, 100f),
+                    currentTactic = com.presidentsimulator.game.data.WarTactic.OFFENSIVE,
                 ),
-            ),
-            vitals = state.vitals.copy(
-                approval = (state.vitals.approval + 0.5f).coerceIn(0f, 100f),
             ),
         )
     }
 
-    /** Dig in: defensive posture reduces tempo but limits losses next battles. */
+    /** Dig in: defensive posture reduces casualties and limits ground lost. */
     fun holdDefensiveLine(state: GameState): GameState {
         val war = state.diplomacy.activeWar ?: return state
         return state.copy(
             military = state.military.copy(deployment = DeploymentStatus.DEFENSIVE),
             diplomacy = state.diplomacy.copy(
                 activeWar = war.copy(
-                    warProgress = (war.warProgress - 1f).coerceIn(-100f, 100f),
+                    currentTactic = com.presidentsimulator.game.data.WarTactic.DEFENSIVE,
                 ),
             ),
         )
@@ -429,6 +525,11 @@ class DiplomacyViewModel(
         const val MAX_INFLUENCE = 100
         const val WAR_MONTHLY_COST = 4_000_000_000L
         const val ARMISTICE_BASE_COST = 5_000_000_000L
+        const val FOREIGN_AID_COST = 3_000_000_000L
+        const val FOREIGN_AID_REL_BONUS = 8
+        const val STATE_VISIT_BUDGET_COST = 1_500_000_000L
+        const val STATE_VISIT_INFLUENCE_COST = 12
+        const val STATE_VISIT_REL_BONUS = 14
         const val VICTORY_REPARATIONS = 20_000_000_000L
         const val DEFEAT_PENALTY = 15_000_000_000L
         const val RECRUIT_COST_PER_SOLDIER = 50_000L
