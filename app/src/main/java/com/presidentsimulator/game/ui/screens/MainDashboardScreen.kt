@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,9 +73,11 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssGameCard
+import com.presidentsimulator.game.ui.theme.NssMuted
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
@@ -84,7 +87,7 @@ import com.presidentsimulator.game.viewmodel.toApprovalString
 import kotlin.math.roundToInt
 
 /**
- * Gamified command center — v3 design reference (mobile-first, game cards not stats).
+ * Gamified command center — denser Figma Make export (scaled chrome + Departments grid).
  */
 @Composable
 fun MainDashboardScreen(
@@ -132,23 +135,23 @@ fun MainDashboardScreen(
                     text = "VELTRIA",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Black,
-                    fontSize = 48.sp,
+                    fontSize = 40.sp,
                     color = NssOnPhoto,
                     letterSpacing = 2.sp,
                 )
                 Text(
                     text = "Year ${state.year} · Quarter $quarter",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     color = NssOnPhoto.copy(alpha = 0.8f),
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = Dimens.SpacingXSmall),
                 )
                 Row(
-                    modifier = Modifier.padding(top = Dimens.SpacingSmall + Dimens.SpacingXSmall),
+                    modifier = Modifier.padding(top = Dimens.SpacingSmall),
                     horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap),
                 ) {
-                    HeroBadge("⚔ $alertCount Active Events", NssAccent)
-                    HeroBadge("👑 Rank #$worldRank", NssOnPhoto.copy(alpha = 0.2f), border = true)
+                    HeroBadge("$alertCount Active Events", NssAccent)
+                    HeroBadge("Rank #$worldRank", NssOnPhoto.copy(alpha = 0.2f), border = true)
                 }
             }
         }
@@ -230,8 +233,8 @@ fun MainDashboardScreen(
             }
 
             DashboardSection(title = "Ministries") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
                         MinistryTile(
                             label = "Economy",
                             subtitle = "GDP ${formatCompactMoney(gdp)}",
@@ -252,7 +255,7 @@ fun MainDashboardScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
                         MinistryTile(
                             label = "Foreign",
                             subtitle = "${state.diplomacy.rivals.count { it.relationshipScore >= 70 }} Allies",
@@ -277,71 +280,30 @@ fun MainDashboardScreen(
                 }
             }
 
-            DashboardSection(title = "More Ministries") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MinistryTile(
-                            label = "Science",
-                            subtitle = "Research",
-                            imageUrl = NssCardImages.BANNER_SCIENCE,
-                            icon = Icons.Default.Science,
-                            badge = scienceMinistryBadge(state),
-                            badgeColor = Color(0xFF3B82F6),
-                            onClick = { onNavigate(GameDestination.Science) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        MinistryTile(
-                            label = "Intel",
-                            subtitle = "Classified",
-                            imageUrl = NssCardImages.BANNER_INTELLIGENCE,
-                            icon = Icons.Default.Shield,
-                            badge = if (state.espionage.activeMissionCount > 0) {
-                                "${state.espionage.activeMissionCount} Ops"
-                            } else {
-                                null
-                            },
-                            badgeColor = Color(0xFF57534E),
-                            onClick = { onNavigate(GameDestination.SecretService) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MinistryTile(
-                            label = "United Nations",
-                            subtitle = "Global vote",
-                            imageUrl = NssCardImages.BANNER_FOREIGN,
-                            icon = Icons.Default.Gavel,
-                            badge = if (state.governance.activeResolution != null) "Vote" else null,
-                            badgeColor = Color(0xFF8B5CF6),
-                            onClick = { onNavigate(GameDestination.Governance) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        MinistryTile(
-                            label = "Settings",
-                            subtitle = "Audio & saves",
-                            imageUrl = NssCardImages.BANNER_COMMAND,
-                            icon = Icons.Default.Settings,
-                            onClick = { onNavigate(GameDestination.AudioSettings) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MinistryTile(
-                            label = "Analytics",
-                            subtitle = "History & saves",
-                            imageUrl = NssCardImages.BANNER_ECONOMY,
-                            icon = Icons.Default.Analytics,
-                            onClick = { onNavigate(GameDestination.Analytics) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        MinistryTile(
-                            label = "Demographics",
-                            subtitle = "Approval blocs",
-                            imageUrl = NssCardImages.BANNER_DOMESTIC,
-                            icon = Icons.Default.Groups,
-                            onClick = { onNavigate(GameDestination.Demographics) },
-                            modifier = Modifier.weight(1f),
-                        )
+            DashboardSection(title = "Departments") {
+                val departments = listOf(
+                    Triple("Science", Icons.Default.Science, scienceMinistryBadge(state)) to GameDestination.Science,
+                    Triple("Laws", Icons.Default.AccountBalance, state.legal.pendingLaws.size.takeIf { it > 0 }?.let { "$it Pending" }) to GameDestination.LawsSociety,
+                    Triple("United Nations", Icons.Default.Public, if (state.governance.activeResolution != null) "Vote" else null) to GameDestination.Governance,
+                    Triple("Analytics", Icons.Default.Analytics, null) to GameDestination.Analytics,
+                    Triple("Demographics", Icons.Default.Groups, null) to GameDestination.Demographics,
+                    Triple("Settings", Icons.Default.Settings, null) to GameDestination.AudioSettings,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+                    departments.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+                            row.forEach { (meta, dest) ->
+                                val (label, icon, badge) = meta
+                                DepartmentTile(
+                                    label = label,
+                                    icon = icon,
+                                    badge = badge,
+                                    onClick = { onNavigate(dest) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -440,12 +402,12 @@ private fun GameVitalCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(28.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             }
             if (warn) {
                 Box(
@@ -457,7 +419,7 @@ private fun GameVitalCard(
                 )
             }
         }
-        Text(text = value, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF292524))
+        Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF292524))
         Text(
             text = "$label · $sub",
             fontSize = 10.sp,
@@ -564,7 +526,7 @@ private fun HorizontalSituationCard(
             .then(if (isCrisis) Modifier.border(2.dp, Color(0xFFFECACA), NssCardShape) else Modifier)
             .background(NssGameCard),
     ) {
-        Box(modifier = Modifier.width(112.dp).height(120.dp)) {
+        Box(modifier = Modifier.width(Dimens.SituationThumbWidth).height(112.dp)) {
             NssPhotoHeader(
                 imageUrl = situation.imageUrl,
                 fallbackGradient = listOf(situation.accentColor.copy(alpha = 0.5f), NssGameCard),
@@ -575,7 +537,7 @@ private fun HorizontalSituationCard(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(Dimens.ContentPadding - Dimens.SpacingXSmall),
+                .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
@@ -640,7 +602,7 @@ private fun MinistryTile(
             .background(NssGameCard)
             .clickable(onClick = onClick),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(96.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(Dimens.MinistryTilePhotoHeight)) {
             NssPhotoHeader(
                 imageUrl = imageUrl,
                 fallbackGradient = listOf(NssPrimary.copy(alpha = 0.3f), NssGameCard),
@@ -674,7 +636,7 @@ private fun MinistryTile(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimens.SpacingSmall + Dimens.SpacingXSmall, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -686,7 +648,52 @@ private fun MinistryTile(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color(0xFFD6D3D1),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DepartmentTile(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    badge: String? = null,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(NssGameCard)
+            .border(1.dp, NssBorder.copy(alpha = 0.55f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(NssMuted.copy(alpha = 0.55f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = NssPrimary, modifier = Modifier.size(14.dp))
+        }
+        Text(
+            text = label,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = NssForeground,
+            modifier = Modifier.weight(1f),
+        )
+        if (badge != null) {
+            Text(
+                text = badge,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                color = NssAccent,
             )
         }
     }

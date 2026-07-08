@@ -4,7 +4,7 @@ import {
   Star, Shield, Globe, DollarSign, Swords, Anchor, Wind,
   Users, Eye, Landmark, Lock, ChevronRight, Zap,
   TrendingUp, TrendingDown, AlertTriangle, Clock,
-  Plus, Minus, Trophy, Flame,
+  Plus, Minus, Trophy, Flame, Settings, BarChart2, BookOpen
 } from "lucide-react";
 
 // ─── IMAGES ──────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ function Btn({ children, color = "bg-[#C4882A]", className = "", onClick }: {
 }) {
   return (
     <motion.button whileTap={{ scale: 0.93 }} onClick={onClick}
-      className={`${color} text-white font-bold text-sm rounded-xl px-4 py-2.5 shadow-md active:shadow-sm transition-shadow ${className}`}>
+      className={`${color} text-white font-bold text-sm rounded-xl px-3 py-2 shadow-md active:shadow-sm transition-shadow ${className}`}>
       {children}
     </motion.button>
   );
@@ -164,13 +164,13 @@ function ScreenHeader({ img, title, subtitle, stats }: {
   stats: { label: string; value: string }[];
 }) {
   return (
-    <div className="relative h-44 overflow-hidden shrink-0">
+    <div className="relative h-32 overflow-hidden shrink-0">
       <img src={img} alt={title} className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#1E3A6E]/70 via-[#1E3A6E]/40 to-[#1E3A6E]/80" />
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        className="absolute inset-0 flex flex-col justify-end p-5">
+        className="absolute inset-0 flex flex-col justify-end p-4">
         <p className="text-white/60 text-[10px] font-bold tracking-[0.4em] uppercase mb-0.5">{subtitle}</p>
-        <h1 className="text-4xl font-[Cinzel] font-black text-white drop-shadow-lg mb-3">{title}</h1>
+        <h1 className="text-4xl font-[Cinzel] font-black text-white drop-shadow-lg mb-2">{title}</h1>
         <div className="flex gap-2">
           {stats.map(s => (
             <div key={s.label} className="bg-white/15 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/20">
@@ -209,13 +209,13 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
   return (
     <div className="flex-1 overflow-y-auto scrollbar-hide">
       {/* Hero map */}
-      <div className="relative h-52 overflow-hidden shrink-0">
+      <div className="relative h-40 overflow-hidden shrink-0">
         <img src={IMG.map} alt="Veltria" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#1E3A6E]/50 via-transparent to-[#f0e8d4]/95" />
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
           className="absolute inset-0 flex flex-col items-center justify-center text-center pb-4">
           <p className="text-[10px] font-bold tracking-[0.5em] text-white/80 uppercase mb-1">The Republic of</p>
-          <h1 className="text-6xl font-[Cinzel] font-black text-white drop-shadow-xl leading-none">VELTRIA</h1>
+          <h1 className="text-5xl font-[Cinzel] font-black text-white drop-shadow-xl leading-none">VELTRIA</h1>
           <p className="text-sm text-white/80 font-semibold mt-2">{formatQuarter(date).replace('·', '—')}</p>
           <div className="flex gap-2 mt-3">
             <span className="bg-[#C4882A] text-white text-[10px] font-black px-3 py-1 rounded-full">3 Active Events</span>
@@ -224,20 +224,20 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
         </motion.div>
       </div>
 
-      <div className="px-4 pt-4 pb-6 space-y-6">
+      <div className="px-3 pt-3 pb-5 space-y-3">
         {/* Empire vitals */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase">Empire Status</h2>
             <span className="text-[10px] text-stone-400 font-medium">Turn {formatQuarter(date)}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {vitals.map(({ Icon, label, value, pct, color, warn, sub }, i) => (
               <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
-                className={`bg-white rounded-2xl p-4 shadow-md border-2 ${warn ? "border-amber-200" : "border-transparent"}`}>
+                className={`bg-white rounded-2xl p-3 shadow-md border-2 ${warn ? "border-amber-200" : "border-transparent"}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: color + "20" }}>
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: color + "20" }}>
                     <Icon className="w-5 h-5" style={{ color }} />
                   </div>
                   {warn && (
@@ -245,7 +245,7 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
                       className="w-2 h-2 rounded-full bg-amber-400" />
                   )}
                 </div>
-                <div className="text-2xl font-mono font-black text-stone-800 mb-0.5">{value}</div>
+                <div className="text-xl font-mono font-black text-stone-800 mb-0.5">{value}</div>
                 <div className="text-[10px] font-bold text-stone-400 mb-2">{label} · {sub}</div>
                 <GameBar pct={pct} color={color} delay={i * 0.07} />
               </motion.div>
@@ -255,7 +255,7 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
 
         {/* Active situations */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase">Active Situations</h2>
             <span className="text-[10px] text-stone-400 font-medium">3 require action</span>
           </div>
@@ -267,13 +267,13 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
                   transition={{ delay: 0.2 + i * 0.1 }}
                   className={`bg-white rounded-2xl overflow-hidden shadow-md border-2 ${ev.sev === "CRISIS" ? "border-red-200" : "border-transparent"} ring-4 ring-transparent ${ev.sev === "CRISIS" ? "ring-red-50" : ""}`}>
                   <div className="flex">
-                    <div className="relative w-28 shrink-0 overflow-hidden">
+                    <div className="relative w-20 shrink-0 overflow-hidden">
                       <img src={ev.img} alt={ev.title} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10" />
                     </div>
-                    <div className="flex-1 p-3.5">
+                    <div className="flex-1 p-2.5">
                       <div className="flex items-start gap-2 mb-1">
-                        <span className="text-base leading-none">{ev.icon}</span>
+                        <span className="text-sm leading-none">{ev.icon}</span>
                         <div>
                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded text-white ${cfg.badge}`}>{ev.sev}</span>
                           <h3 className="text-sm font-bold text-stone-800 mt-0.5 leading-tight">{ev.title}</h3>
@@ -293,14 +293,14 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
 
         {/* Ministry tiles */}
         <div>
-          <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase mb-3">Ministries</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase mb-2">Ministries</h2>
+          <div className="grid grid-cols-2 gap-2">
             {ministries.map(({ id, label, img, Icon, sub, badge }, i) => (
               <motion.div key={id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 + i * 0.08 }}
                 onClick={() => setView(id)}
                 className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group">
-                <div className="relative h-24 overflow-hidden">
+                <div className="relative h-20 overflow-hidden">
                   <img src={img} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#1E3A6E]/80 to-transparent" />
                   {badge && (
@@ -310,13 +310,35 @@ function Dashboard({ setView, date }: { setView: (v: string) => void; date: Date
                   )}
                   <Icon className="absolute bottom-2.5 left-3 w-5 h-5 text-white drop-shadow" />
                 </div>
-                <div className="px-3 py-2.5 flex items-center justify-between">
+                <div className="px-2.5 py-2 flex items-center justify-between">
                   <div>
                     <div className="text-sm font-bold text-stone-800">{label}</div>
                     <div className="text-[10px] text-stone-400 font-medium">{sub}</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-stone-300" />
                 </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase mt-6 mb-2">Departments</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: "science", label: "Science", Icon: Zap },
+              { id: "laws", label: "Laws", Icon: BookOpen },
+              { id: "un", label: "United Nations", Icon: Globe },
+              { id: "analytics", label: "Analytics", Icon: BarChart2 },
+              { id: "demographics", label: "Demographics", Icon: Users },
+              { id: "settings", label: "Settings", Icon: Settings }
+            ].map(({ id, label, Icon }, i) => (
+              <motion.div key={id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.05 }}
+                onClick={() => setView(id)}
+                className="bg-white rounded-xl p-2 shadow-sm border border-stone-100 flex items-center gap-2 cursor-pointer hover:border-[#C4882A]/50 transition-colors">
+                <div className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-[#1E3A6E]" />
+                </div>
+                <div className="text-xs font-bold text-stone-700 flex-1">{label}</div>
               </motion.div>
             ))}
           </div>
@@ -364,16 +386,16 @@ function EconomyScreen() {
       </div>
 
       {/* Sector cards */}
-      <div className="px-4 pt-5 pb-6">
-        <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase mb-3">Sector Management</h2>
-        <div className="grid grid-cols-2 gap-3">
+      <div className="px-3 pt-4 pb-5">
+        <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase mb-2">Sector Management</h2>
+        <div className="grid grid-cols-2 gap-2">
           {SECTORS.map((s, i) => {
             const active = boosted.has(s.id);
             return (
               <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
                 className={`bg-white rounded-2xl overflow-hidden shadow-md border-2 transition-all duration-200 ${active ? "border-[#C4882A] shadow-[#C4882A]/20 shadow-xl" : "border-transparent"}`}>
-                <div className="relative h-32 overflow-hidden">
+                <div className="relative h-24 overflow-hidden">
                   <img src={s.img} alt={s.name} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute top-2 left-2"><LvBadge n={s.level} /></div>
@@ -387,7 +409,7 @@ function EconomyScreen() {
                     <Stars n={s.level} />
                   </div>
                 </div>
-                <div className="p-3 space-y-2">
+                <div className="p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-stone-400">GDP Share</span>
                     <span className="text-lg font-mono font-black text-stone-800">{s.gdp.toFixed(1)}%</span>
@@ -402,9 +424,9 @@ function EconomyScreen() {
                     ${s.revenue}B/yr revenue
                   </div>
                 </div>
-                <div className="px-3 pb-3">
+                <div className="px-2.5 pb-2.5">
                   <motion.button whileTap={{ scale: 0.94 }} onClick={() => toggle(s.id)}
-                    className={`w-full py-2.5 rounded-xl font-black text-sm transition-all duration-200 shadow-sm ${
+                    className={`w-full py-1.5 rounded-xl font-black text-sm transition-all duration-200 shadow-sm ${
                       active ? "bg-green-500 text-white shadow-green-200" : "bg-[#C4882A] text-white hover:bg-[#b07820]"
                     }`}>
                     {active ? "Investing" : "Invest"}
@@ -432,16 +454,16 @@ function DefenseScreen() {
       <ScreenHeader img={IMG.def_bg} title="Defense" subtitle="Ministry of"
         stats={[{ label: "Power", value: "8,400" }, { label: "Personnel", value: "847K" }, { label: "Readiness", value: "87%" }]} />
 
-      <div className="px-4 pt-4 pb-6 space-y-5">
+      <div className="px-3 pt-3 pb-5 space-y-3">
         {/* Branch tabs */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {branches.map(b => {
             const info = bInfo(b);
             const active = branch === b;
             const unitCount = UNITS.filter(u => u.branch === b).reduce((s, u) => s + u.count, 0);
             return (
               <motion.button key={b} whileTap={{ scale: 0.95 }} onClick={() => setBranch(b)}
-                className={`rounded-2xl p-3.5 text-left transition-all duration-200 shadow-sm ${
+                className={`rounded-xl p-2.5 text-left transition-all duration-200 shadow-sm ${
                   active ? "text-white shadow-lg" : "bg-white text-stone-700"
                 }`}
                 style={active ? { background: `linear-gradient(135deg, ${info.color}dd, ${info.color})` } : {}}>
@@ -456,17 +478,17 @@ function DefenseScreen() {
 
         {/* Units */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase">{branch} Units</h2>
             <span className="text-[10px] text-stone-400 font-medium">{UNITS.filter(u => u.branch === branch).length} divisions</span>
           </div>
           <motion.div key={branch} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}
-            className="grid grid-cols-2 gap-3">
+            className="grid grid-cols-2 gap-2">
             {UNITS.filter(u => u.branch === branch).map((u, i) => (
               <motion.div key={u.name} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.06 }}
                 className="bg-white rounded-2xl overflow-hidden shadow-md border border-stone-100 flex flex-col group">
-                <div className="relative h-28 overflow-hidden">
+                <div className="relative h-20 overflow-hidden">
                   <img src={u.img} alt={u.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
                   <div className="absolute top-2 left-2"><StatusChip label={u.status} /></div>
@@ -480,7 +502,7 @@ function DefenseScreen() {
                     <Stars n={u.stars} />
                   </div>
                 </div>
-                <div className="p-3 flex-1 space-y-2">
+                <div className="p-2.5 flex-1 space-y-1.5">
                   <div>
                     <div className="flex justify-between text-[9px] font-bold mb-1">
                       <span className="text-stone-400">Strength</span>
@@ -491,10 +513,10 @@ function DefenseScreen() {
                   <div className="text-[9px] text-stone-400 font-medium">${u.maint.toFixed(1)}B/yr</div>
                 </div>
                 <div className="grid grid-cols-2 border-t border-stone-100">
-                  <motion.button whileTap={{ scale: 0.94 }} className="py-2 text-[10px] font-bold text-[#1E3A6E] hover:bg-blue-50 transition-colors rounded-bl-2xl">
+                  <motion.button whileTap={{ scale: 0.94 }} className="py-1.5 text-[10px] font-bold text-[#1E3A6E] hover:bg-blue-50 transition-colors rounded-bl-2xl">
                     Redeploy
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.94 }} className="py-2 text-[10px] font-bold text-[#C4882A] hover:bg-amber-50 border-l border-stone-100 transition-colors rounded-br-2xl">
+                  <motion.button whileTap={{ scale: 0.94 }} className="py-1.5 text-[10px] font-bold text-[#C4882A] hover:bg-amber-50 border-l border-stone-100 transition-colors rounded-br-2xl">
                     Upgrade
                   </motion.button>
                 </div>
@@ -505,7 +527,7 @@ function DefenseScreen() {
 
         {/* Recruitment */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-black tracking-[0.25em] text-[#1E3A6E] uppercase">Recruit {branch}</h2>
             {totalCost > 0 && (
               <motion.button whileTap={{ scale: 0.93 }}
@@ -514,14 +536,14 @@ function DefenseScreen() {
               </motion.button>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {RECRUITS.filter(r => r.branch === branch).map((u, i) => {
               const q = qty[u.id] ?? 0;
               return (
                 <motion.div key={u.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.07 }}
                   className={`bg-white rounded-2xl overflow-hidden shadow-md border-2 transition-all ${q > 0 ? "border-[#C4882A] shadow-[#C4882A]/20 shadow-xl" : "border-transparent"}`}>
-                  <div className="relative h-24 overflow-hidden">
+                  <div className="relative h-20 overflow-hidden">
                     <img src={u.img} alt={u.name} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                     {q > 0 && (
@@ -534,19 +556,19 @@ function DefenseScreen() {
                       <p className="text-xl font-mono font-black text-[#C4882A]">${u.cost.toFixed(1)}B</p>
                     </div>
                   </div>
-                  <div className="p-2.5 space-y-2">
+                  <div className="p-2 space-y-1.5">
                     <div className="flex gap-2 text-[9px] font-bold text-stone-400">
                       <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{u.months}mo</span>
                       <span className="flex items-center gap-0.5"><Zap className="w-3 h-3 text-amber-500" />+{u.power} power</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <motion.button whileTap={{ scale: 0.9 }} onClick={() => upd(u.id, -1)}
-                        className="w-8 h-8 bg-stone-100 rounded-xl font-bold text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors">
+                        className="w-7 h-7 bg-stone-100 rounded-xl font-bold text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors">
                         <Minus className="w-3.5 h-3.5" />
                       </motion.button>
                       <span className="flex-1 text-center text-lg font-mono font-black text-stone-800">{q}</span>
                       <motion.button whileTap={{ scale: 0.9 }} onClick={() => upd(u.id, +1)}
-                        className="w-8 h-8 bg-[#1E3A6E] rounded-xl text-white flex items-center justify-center hover:bg-[#1E3A6E]/80 transition-colors">
+                        className="w-7 h-7 bg-[#1E3A6E] rounded-xl text-white flex items-center justify-center hover:bg-[#1E3A6E]/80 transition-colors">
                         <Plus className="w-3.5 h-3.5" />
                       </motion.button>
                     </div>
@@ -571,7 +593,7 @@ function ForeignScreen() {
       <ScreenHeader img={IMG.for_bg} title="Foreign Affairs" subtitle="Ministry of"
         stats={[{ label: "Allies", value: "3" }, { label: "Treaties", value: "5" }, { label: "Crises", value: "1" }]} />
 
-      <div className="px-4 pt-4 pb-6 space-y-4">
+      <div className="px-3 pt-3 pb-5 space-y-3">
         {/* Relation legend */}
         <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-stone-100 flex items-center gap-4">
           <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Relations:</div>
@@ -583,7 +605,7 @@ function ForeignScreen() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {NATIONS.map((n, i) => {
             const isHostile = n.status === "HOSTILE";
             const isRival = n.status === "RIVAL";
@@ -595,8 +617,8 @@ function ForeignScreen() {
                   selected === n.name ? "border-[#C4882A] shadow-[#C4882A]/20 shadow-xl" :
                   isHostile ? "border-red-200" : "border-transparent"
                 }`}>
-                <div className={`h-24 bg-gradient-to-br ${n.bg} flex items-center justify-center relative overflow-hidden`}>
-                  <motion.span className="text-5xl drop-shadow-lg"
+                <div className={`h-20 bg-gradient-to-br ${n.bg} flex items-center justify-center relative overflow-hidden`}>
+                  <motion.span className="text-4xl drop-shadow-lg"
                     animate={isHostile ? { scale: [1, 1.05, 1] } : {}}
                     transition={{ repeat: Infinity, duration: 2 }}>
                     {n.flag}
@@ -609,7 +631,7 @@ function ForeignScreen() {
                     <StatusChip label={n.status} />
                   </div>
                 </div>
-                <div className="p-3 space-y-2">
+                <div className="p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-black text-stone-800">{n.name}</h3>
                     <StatusChip label={n.threat} />
@@ -622,7 +644,7 @@ function ForeignScreen() {
                     <GameBar pct={n.rel} color={relColor(n.rel)} delay={i * 0.06} h="h-2.5" />
                   </div>
                   <motion.button whileTap={{ scale: 0.93 }}
-                    className={`w-full py-2 rounded-xl text-[11px] font-black text-white transition-colors ${n.actionColor}`}>
+                    className={`w-full py-1.5 rounded-xl text-[11px] font-black text-white transition-colors ${n.actionColor}`}>
                     {n.action}
                   </motion.button>
                 </div>
@@ -635,7 +657,7 @@ function ForeignScreen() {
         {sel && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-[#C4882A]">
-            <div className={`h-16 bg-gradient-to-r ${sel.bg} flex items-center px-4 gap-3`}>
+            <div className={`h-12 bg-gradient-to-r ${sel.bg} flex items-center px-4 gap-2`}>
               <span className="text-4xl">{sel.flag}</span>
               <div>
                 <h3 className="text-white font-[Cinzel] font-black text-lg">{sel.name}</h3>
@@ -643,12 +665,12 @@ function ForeignScreen() {
               </div>
               <button onClick={() => setSelected(null)} className="ml-auto text-white/70 hover:text-white text-2xl leading-none">×</button>
             </div>
-            <div className="p-4">
-              <p className="text-xs font-black tracking-widest text-stone-400 uppercase mb-3">Diplomatic Actions</p>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="p-3">
+              <p className="text-xs font-black tracking-widest text-stone-400 uppercase mb-2">Diplomatic Actions</p>
+              <div className="grid grid-cols-3 gap-1.5">
                 {["Propose Treaty","Send Trade Offer","Gift Aid","Share Intelligence","Issue Warning","Request Summit"].map(a => (
                   <motion.button key={a} whileTap={{ scale: 0.93 }}
-                    className="bg-stone-50 border border-stone-200 text-stone-700 text-[10px] font-bold py-2.5 px-2 rounded-xl hover:border-[#1E3A6E] hover:text-[#1E3A6E] transition-colors text-center">
+                    className="bg-stone-50 border border-stone-200 text-stone-700 text-[10px] font-bold py-1.5 px-2 rounded-xl hover:border-[#1E3A6E] hover:text-[#1E3A6E] transition-colors text-center">
                     {a}
                   </motion.button>
                 ))}
@@ -693,17 +715,29 @@ function HUD({ date, advanceTurn }: { date: Date; advanceTurn: () => void }) {
     { Icon: Shield,     v: "73%",   warn: true, label: "Stability" },
     { Icon: Swords,     v: "8.4K",  warn: false, label: "Mil. Power" },
   ];
+
+  // Election logic
+  const nextElectionYear = Math.ceil((date.getFullYear() + 1) / 4) * 4;
+  const turnsToElection = ((nextElectionYear - date.getFullYear()) * 4) + (4 - Math.floor(date.getMonth() / 3));
+
   return (
     <header className="bg-[#1E3A6E] pt-[env(safe-area-inset-top,0px)] shrink-0 flex flex-col shadow-2xl z-50 rounded-b-3xl">
       {/* Top row: Brand & Turn Action */}
-      <div className="flex items-center justify-between px-4 h-16">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C4882A] to-amber-600 flex items-center justify-center shadow-lg border border-white/20">
-            <Landmark className="w-5 h-5 text-white drop-shadow-md" />
+      <div className="flex items-center justify-between px-3 h-12">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#C4882A] to-amber-600 flex items-center justify-center shadow-lg border border-white/20">
+            <Landmark className="w-4 h-4 text-white drop-shadow-md" />
           </div>
           <div className="leading-none">
-            <div className="text-lg font-[Cinzel] font-black text-white tracking-widest drop-shadow-sm">VELTRIA</div>
-            <div className="text-[10px] text-white/60 font-bold uppercase tracking-widest mt-0.5">{formatQuarter(date)}</div>
+            <div className="text-base font-[Cinzel] font-black text-white tracking-widest drop-shadow-sm">VELTRIA</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="text-[10px] text-white/60 font-bold uppercase tracking-widest">{formatQuarter(date)}</div>
+              {turnsToElection <= 4 && (
+                <div className="bg-amber-500/20 border border-amber-500/40 px-1.5 rounded text-[8px] font-black text-amber-300">
+                  ELECTION IN {turnsToElection}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -712,14 +746,14 @@ function HUD({ date, advanceTurn }: { date: Date; advanceTurn: () => void }) {
           transition={{ repeat: Infinity, duration: 2.5 }}
           whileTap={{ scale: 0.93 }}
           onClick={advanceTurn}
-          className="bg-gradient-to-r from-[#C4882A] to-amber-500 text-white text-xs font-black px-5 py-2.5 rounded-2xl shadow-xl shrink-0 flex items-center gap-2 border border-white/20 hover:to-amber-400 transition-all">
+          className="bg-gradient-to-r from-[#C4882A] to-amber-500 text-white text-xs font-black px-3 py-1.5 rounded-2xl shadow-xl shrink-0 flex items-center gap-2 border border-white/20 hover:to-amber-400 transition-all">
           <Flame className="w-4 h-4 text-amber-100" />
           End Turn
         </motion.button>
       </div>
 
       {/* Bottom row: Metrics Bar */}
-      <div className="bg-[#15294e] px-4 py-2 flex items-center justify-between mx-2 mb-2 rounded-xl border border-white/5 shadow-inner">
+      <div className="bg-[#15294e] px-3 py-1.5 flex items-center justify-between mx-2 mb-2 rounded-xl border border-white/5 shadow-inner">
         {resources.map(({ Icon, v, warn }, i) => (
           <div key={i} className="flex items-center gap-1.5">
             <div className={`p-1 rounded-md ${warn ? "bg-amber-500/20" : "bg-white/10"}`}>
@@ -816,6 +850,9 @@ export default function App() {
         {view === "foreign"  && <ForeignScreen />}
         {view === "intel"    && <LockedScreen label="Intelligence" />}
         {view === "domestic" && <LockedScreen label="Domestic Policy" />}
+        {["science", "laws", "un", "analytics", "demographics", "settings"].includes(view) && (
+          <LockedScreen label={view.charAt(0).toUpperCase() + view.slice(1)} />
+        )}
       </motion.div>
       <BottomNav view={view} setView={setView} />
     </div>

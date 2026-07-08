@@ -1,29 +1,30 @@
 package com.presidentsimulator.game.ui.components
 
 /**
- * Unsplash image URLs from the Nation State Simulator UI design reference (v3).
+ * Unsplash image URLs from the current Nation State Simulator Figma Make export
+ * (`Nation State Simulator UI Design (3).zip` → `ui_reference/`).
  * Loaded at runtime via Coil; gradients are used as offline fallback.
  */
 object NssCardImages {
-    const val SERVICES = "https://images.unsplash.com/photo-1627327053419-fe894c4650ed?w=500&h=220&fit=crop&auto=format"
-    const val INDUSTRY = "https://images.unsplash.com/photo-1517065963912-27f75001ebe2?w=500&h=220&fit=crop&auto=format"
-    const val MANUFACTURING = "https://images.unsplash.com/photo-1700727448686-b314cb5f9948?w=500&h=220&fit=crop&auto=format"
-    const val TECHNOLOGY = "https://images.unsplash.com/photo-1651340608985-d25cc73156e8?w=500&h=220&fit=crop&auto=format"
-    const val AGRICULTURE = "https://images.unsplash.com/photo-1508175688576-0c076b47b5b5?w=500&h=220&fit=crop&auto=format"
-    const val ENERGY = "https://images.unsplash.com/photo-1588011930968-eadac80e6a5a?w=500&h=220&fit=crop&auto=format"
-    const val DEFENSE_IND = "https://images.unsplash.com/photo-1693515156811-25156b5345a3?w=500&h=220&fit=crop&auto=format"
+    const val SERVICES = "https://images.unsplash.com/photo-1627327053419-fe894c4650ed?w=600&h=300&fit=crop&auto=format"
+    const val INDUSTRY = "https://images.unsplash.com/photo-1517065963912-27f75001ebe2?w=600&h=300&fit=crop&auto=format"
+    const val MANUFACTURING = "https://images.unsplash.com/photo-1700727448686-b314cb5f9948?w=600&h=300&fit=crop&auto=format"
+    const val TECHNOLOGY = "https://images.unsplash.com/photo-1651340608985-d25cc73156e8?w=600&h=300&fit=crop&auto=format"
+    const val AGRICULTURE = "https://images.unsplash.com/photo-1508175688576-0c076b47b5b5?w=600&h=300&fit=crop&auto=format"
+    const val ENERGY = "https://images.unsplash.com/photo-1588011930968-eadac80e6a5a?w=600&h=300&fit=crop&auto=format"
+    const val DEFENSE_IND = "https://images.unsplash.com/photo-1693515156811-25156b5345a3?w=600&h=300&fit=crop&auto=format"
 
-    const val INFANTRY = "https://images.unsplash.com/photo-1630534658718-395efda906cb?w=500&h=220&fit=crop&auto=format"
-    const val ARMORED = "https://images.unsplash.com/photo-1693515157462-e217eec5e786?w=500&h=220&fit=crop&auto=format"
-    const val ARTILLERY = "https://images.unsplash.com/photo-1517065963912-27f75001ebe2?w=500&h=220&fit=crop&auto=format"
-    const val SPECIAL_OPS = "https://images.unsplash.com/flagged/photo-1560177776-295b9cd779de?w=500&h=220&fit=crop&auto=format"
-    const val DESTROYER = "https://images.unsplash.com/photo-1719553946838-1190abdeee92?w=500&h=220&fit=crop&auto=format"
-    const val FRIGATE = "https://images.unsplash.com/photo-1708342421457-9c59f4843fe1?w=500&h=220&fit=crop&auto=format"
-    const val SUBMARINE = "https://images.unsplash.com/photo-1775384222998-c3b458424353?w=500&h=220&fit=crop&auto=format"
-    const val CARRIER = "https://images.unsplash.com/photo-1719553946838-1190abdeee92?w=500&h=220&fit=crop&auto=format"
-    const val FIGHTER = "https://images.unsplash.com/photo-1689182314475-ff55f109b430?w=500&h=220&fit=crop&auto=format"
-    const val BOMBER = "https://images.unsplash.com/photo-1536714303373-a2114b28b6b7?w=500&h=220&fit=crop&auto=format"
-    const val DRONE = "https://images.unsplash.com/photo-1514598800938-f7125ea1aa1c?w=500&h=220&fit=crop&auto=format"
+    const val INFANTRY = "https://images.unsplash.com/photo-1630534658718-395efda906cb?w=600&h=300&fit=crop&auto=format"
+    const val ARMORED = "https://images.unsplash.com/photo-1693515157462-e217eec5e786?w=600&h=300&fit=crop&auto=format"
+    const val ARTILLERY = "https://images.unsplash.com/photo-1517065963912-27f75001ebe2?w=600&h=300&fit=crop&auto=format"
+    const val SPECIAL_OPS = "https://images.unsplash.com/flagged/photo-1560177776-295b9cd779de?w=600&h=300&fit=crop&auto=format"
+    const val DESTROYER = "https://images.unsplash.com/photo-1719553946838-1190abdeee92?w=600&h=300&fit=crop&auto=format"
+    const val FRIGATE = "https://images.unsplash.com/photo-1708342421457-9c59f4843fe1?w=600&h=300&fit=crop&auto=format"
+    const val SUBMARINE = "https://images.unsplash.com/photo-1775384222998-c3b458424353?w=600&h=300&fit=crop&auto=format"
+    const val CARRIER = "https://images.unsplash.com/photo-1719553946838-1190abdeee92?w=600&h=300&fit=crop&auto=format"
+    const val FIGHTER = "https://images.unsplash.com/photo-1689182314475-ff55f109b430?w=600&h=300&fit=crop&auto=format"
+    const val BOMBER = "https://images.unsplash.com/photo-1536714303373-a2114b28b6b7?w=600&h=300&fit=crop&auto=format"
+    const val DRONE = "https://images.unsplash.com/photo-1514598800938-f7125ea1aa1c?w=600&h=300&fit=crop&auto=format"
 
     const val BANNER_ECONOMY = "https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1400&h=300&fit=crop&auto=format"
     const val BANNER_DEFENSE = "https://images.unsplash.com/photo-1678818048682-44b5cc5375a1?w=1400&h=300&fit=crop&auto=format"

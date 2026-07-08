@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.presidentsimulator.game.ui.theme.Dimens
 
 @Composable
 fun ScreenHeader(
@@ -34,7 +35,7 @@ fun ScreenHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(176.dp),
+            .height(Dimens.ScreenHeaderHeight),
     ) {
         AsyncImage(
             model = imgUrl,

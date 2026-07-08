@@ -200,20 +200,23 @@ fun NssScreenHeader(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(Dimens.SpacingLarge),
+                .padding(Dimens.ContentPadding),
         ) {
             Text(
                 text = "MINISTRY OF",
                 style = MaterialTheme.typography.labelSmall,
                 color = NssOnPhoto.copy(alpha = 0.6f),
                 letterSpacing = 4.sp,
+                fontSize = 10.sp,
             )
             Text(
                 text = title.uppercase(),
-                style = MaterialTheme.typography.headlineSmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
+                fontWeight = FontWeight.Black,
+                fontSize = 28.sp,
                 color = NssOnPhoto,
-                letterSpacing = 2.sp,
-                modifier = Modifier.padding(bottom = Dimens.SpacingSmall + Dimens.SpacingXSmall),
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(bottom = Dimens.SpacingSmall),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall)) {
                 statPills.take(3).forEach { (label, value) ->
@@ -550,7 +553,7 @@ fun NssSectorCard(
             .clip(NssCardShape)
             .background(NssGameCard),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(128.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(Dimens.SectorCardPhotoHeight)) {
             NssPhotoHeader(
                 imageUrl = imageUrl,
                 fallbackGradient = headerGradient,
@@ -583,7 +586,7 @@ fun NssSectorCard(
                 NssStars(count = level)
             }
         }
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -593,7 +596,7 @@ fun NssSectorCard(
                 Text(
                     "${"%.1f".format(gdpShare)}%",
                     color = NssForeground,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                 )
             }
@@ -889,7 +892,7 @@ fun NssNationCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp),
+                .height(Dimens.NationCardHeaderHeight),
             contentAlignment = Alignment.Center,
         ) {
             NssPhotoHeader(
@@ -898,7 +901,7 @@ fun NssNationCard(
                 modifier = Modifier.matchParentSize(),
                 scrimTopToBottom = CardHeaderBottomScrim,
             )
-            Text(text = flagEmoji, fontSize = 48.sp)
+            Text(text = flagEmoji, fontSize = 36.sp)
             NssBadge(label = status, large = true, modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
             NssBadge(label = threat, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             Text(

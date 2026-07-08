@@ -4,22 +4,23 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Central spacing, sizing, and elevation tokens for NSS layouts.
+ * Tuned to the scaled-down Figma Make export (Nation State Simulator UI Design zip).
  */
 object Dimens {
     val SpacingXSmall = 4.dp
     val SpacingSmall = 8.dp
-    val SpacingMedium = 16.dp
-    val SpacingLarge = 24.dp
-    val SpacingXLarge = 32.dp
+    val SpacingMedium = 12.dp
+    val SpacingLarge = 20.dp
+    val SpacingXLarge = 28.dp
 
     /** Standard content inset for scrollable ministry bodies. */
     val ContentPadding = SpacingMedium
 
     /** Gap between cards in 2-column grids / horizontal rows. */
-    val GridGap = SpacingSmall
+    val GridGap = 8.dp
 
     /** Vertical rhythm between stacked sections. */
-    val SectionGap = SpacingLarge
+    val SectionGap = 16.dp
 
     val CardRadius = 16.dp
     val CardElevation = 1.dp
@@ -28,10 +29,21 @@ object Dimens {
     val BadgeCorner = 6.dp
     val PillCorner = 12.dp
 
-    val HudHeight = 56.dp
+    /** Matches reference HUD `h-12` (~48dp) plus inset breathing room. */
+    val HudHeight = 48.dp
     val BottomNavHeight = 56.dp
-    val ScreenHeaderHeight = 176.dp
-    val DashboardHeroHeight = 208.dp
+
+    /** Matches reference ScreenHeader `h-32`. */
+    val ScreenHeaderHeight = 128.dp
+
+    /** Matches reference dashboard hero `h-40`. */
+    val DashboardHeroHeight = 160.dp
+
+    val SectorCardPhotoHeight = 96.dp
+    val MinistryTilePhotoHeight = 80.dp
+    val NationCardHeaderHeight = 80.dp
+    val UnitCardPhotoHeight = 80.dp
+    val SituationThumbWidth = 80.dp
 }
 
 /**
