@@ -147,6 +147,8 @@ data class CovertMission(
     val progressTicks: Int = 0,
     val requiredTicks: Int,
     val status: MissionStatus = MissionStatus.ACTIVE,
+    /** Human-readable reward / blowback after resolution. */
+    val outcomeSummary: String = "",
 ) {
     val progressFraction: Float
         get() = if (requiredTicks <= 0) {

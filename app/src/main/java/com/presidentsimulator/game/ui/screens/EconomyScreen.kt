@@ -51,12 +51,14 @@ import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.InfrastructureType
+import com.presidentsimulator.game.data.ResourceType
 import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.ui.components.NssAlertBanner
 import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
+import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssProgressBar
@@ -73,16 +75,17 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.mutableIntStateOf
 import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.GameIcons
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssBorder
-import com.presidentsimulator.game.ui.theme.NssCard
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssGameCard
+import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.theme.NssSecondary
@@ -91,6 +94,7 @@ import com.presidentsimulator.game.ui.theme.NssIndigo
 import com.presidentsimulator.game.ui.theme.NssOrange
 import com.presidentsimulator.game.viewmodel.AnalyticsSaveViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
+import com.presidentsimulator.game.viewmodel.toBudgetString
 import com.presidentsimulator.game.viewmodel.toResourceString
 import kotlin.math.roundToInt
 
@@ -126,7 +130,7 @@ fun EconomyScreen(
     val context = LocalContext.current
     val audio = remember(context) { GameAudioManager.getInstance(context) }
     var selectedTab by remember { mutableStateOf("SECTORS") }
-    val tabs = listOf("SECTORS", "POLICY", "BUDGET", "TRADE")
+    val tabs = listOf("SECTORS", "INDUSTRY", "POLICY", "BUDGET", "TRADE")
     val gdp = remember(state) { AnalyticsSaveViewModel().calculateGDP(state) }
     val sectors = remember(state) { buildSectors(state, gdp) }
 
@@ -158,12 +162,193 @@ fun EconomyScreen(
         ) {
             when (selectedTab) {
                 "SECTORS" -> SectorsTab(state, gdp, sectors, viewModel, audio)
+                "INDUSTRY" -> IndustryTab(state = state, viewModel = viewModel, audio = audio)
                 "POLICY" -> PolicyTab(state = state, viewModel = viewModel)
                 "BUDGET" -> BudgetTab(state = state)
                 else -> TradeTab(state = state, viewModel = viewModel, audio = audio)
             }
         }
     }
+}
+
+@Composable
+private fun IndustryTab(
+    state: GameState,
+    viewModel: GameViewModel,
+    audio: GameAudioManager,
+) {
+    val production = state.production
+    var plantAmount by remember { mutableIntStateOf(1) }
+    var mineAmount by remember { mutableIntStateOf(1) }
+
+    Text(
+        text = "Production modifier ${(state.legal.combinedProductionModifier * 100f).roundToInt()}%",
+        fontSize = 12.sp,
+        color = NssMutedForeground,
+    )
+
+    if (production.energyShortage || production.foodShortage) {
+        NssPanel(modifier = Modifier.fillMaxWidth()) {
+            if (production.energyShortage) {
+                Text(
+                    "Energy shortage — industrial output penalized to 30%.",
+                    color = NssRed,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                )
+            }
+            if (production.foodShortage) {
+                Text(
+                    "Food shortage — approval and population are falling.",
+                    color = NssRed,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = if (production.energyShortage) 6.dp else 0.dp),
+                )
+            }
+        }
+    }
+
+    val energyFlow = production.flow(ResourceType.ENERGY)
+    IndustryResourceCard(ResourceType.ENERGY, production.energy, energyFlow.produced, energyFlow.consumed)
+    val foodFlow = production.flow(ResourceType.FOOD)
+    IndustryResourceCard(ResourceType.FOOD, production.food, foodFlow.produced, foodFlow.consumed)
+    val materialsFlow = production.flow(ResourceType.MATERIALS)
+    IndustryResourceCard(ResourceType.MATERIALS, production.materials, materialsFlow.produced, materialsFlow.consumed)
+    val goodsFlow = production.flow(ResourceType.GOODS)
+    IndustryResourceCard(
+        resource = ResourceType.GOODS,
+        stock = production.goods,
+        produced = goodsFlow.produced,
+        consumed = goodsFlow.consumed,
+        extra = "Goods revenue last tick ${production.lastGoodsRevenue.toBudgetString()}",
+    )
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("INDUSTRIAL CAPACITY", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        CapacityLine("Power Plants", production.powerPlants)
+        CapacityLine("Mines", production.mines)
+        CapacityLine("Factories", state.economy.factories)
+        CapacityLine("Farms", state.economy.farms)
+        CapacityLine("Housing", state.economy.housing)
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("EXPAND CAPACITY", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        IndustryBuildControls(
+            label = "Power Plants",
+            amount = plantAmount,
+            maxAffordable = viewModel.maxAffordable(InfrastructureType.POWER_PLANT),
+            onAmountChange = { plantAmount = it },
+            onBuild = {
+                viewModel.buildPowerPlant(plantAmount)
+                audio.playBuildSuccess()
+                plantAmount = 1
+            },
+        )
+        IndustryBuildControls(
+            label = "Mines",
+            amount = mineAmount,
+            maxAffordable = viewModel.maxAffordable(InfrastructureType.MINE),
+            onAmountChange = { mineAmount = it },
+            onBuild = {
+                viewModel.buildMine(mineAmount)
+                audio.playBuildSuccess()
+                mineAmount = 1
+            },
+        )
+    }
+}
+
+@Composable
+private fun IndustryResourceCard(
+    resource: ResourceType,
+    stock: Long,
+    produced: Long,
+    consumed: Long,
+    extra: String? = null,
+) {
+    val surplus = produced - consumed
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(resource.displayName, fontWeight = FontWeight.Bold, color = NssForeground)
+            Text("Stock ${stock.toResourceString()}", color = NssMutedForeground, fontSize = 12.sp)
+        }
+        Text(
+            "+${produced.toResourceString()} / −${consumed.toResourceString()}",
+            fontSize = 12.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        NssGameBar(
+            percent = ((produced.toFloat() / (produced + consumed).coerceAtLeast(1).toFloat()) * 100f)
+                .coerceIn(5f, 100f),
+            color = if (surplus >= 0) NssEmerald else NssRed,
+            thick = true,
+        )
+        Text(
+            text = if (surplus >= 0) "Surplus ${surplus.toResourceString()}" else "Deficit ${(-surplus).toResourceString()}",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (surplus >= 0) NssEmerald else NssRed,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (extra != null) {
+            Text(extra, fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
+private fun CapacityLine(label: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = NssForeground, fontSize = 13.sp)
+        Text(count.toString(), fontWeight = FontWeight.Bold, color = NssPrimary)
+    }
+}
+
+@Composable
+private fun IndustryBuildControls(
+    label: String,
+    amount: Int,
+    maxAffordable: Int,
+    onAmountChange: (Int) -> Unit,
+    onBuild: () -> Unit,
+) {
+    val cappedMax = maxAffordable.coerceAtLeast(1)
+    Text(
+        "$label · build $amount (max $maxAffordable)",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = NssForeground,
+        modifier = Modifier.padding(top = 10.dp),
+    )
+    Slider(
+        value = amount.toFloat().coerceIn(1f, cappedMax.toFloat()),
+        onValueChange = { onAmountChange(it.roundToInt().coerceIn(1, cappedMax)) },
+        valueRange = 1f..cappedMax.toFloat(),
+        steps = (cappedMax - 2).coerceAtLeast(0),
+        colors = SliderDefaults.colors(thumbColor = NssPrimary, activeTrackColor = NssPrimary, inactiveTrackColor = NssBorder),
+    )
+    Text(
+        text = "BUILD $label",
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(NssCardShape)
+            .background(if (maxAffordable > 0) NssPrimary else NssMutedForeground.copy(alpha = 0.35f))
+            .clickable(enabled = maxAffordable > 0, onClick = onBuild)
+            .padding(vertical = 10.dp),
+        color = NssOnPhoto,
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    )
 }
 
 @Composable

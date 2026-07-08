@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,7 +33,6 @@ import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.viewmodel.toBudgetString
 import com.presidentsimulator.game.viewmodel.toPopulationString
-import kotlin.math.abs
 
 @Composable
 fun TurnSummaryDialog(
@@ -50,12 +51,13 @@ fun TurnSummaryDialog(
                 .fillMaxWidth()
                 .clip(NssCardShape)
                 .background(NssBackground)
-                .padding(20.dp),
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
             val dateLabel = "${GameState.monthName(summary.month)} ${summary.year}"
 
             Text(
-                text = "TURN SUMMARY",
+                text = "MONTHLY BULLETIN",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 color = NssPrimary,
@@ -96,6 +98,27 @@ fun TurnSummaryDialog(
                         value = (if (summary.gdpDelta > 0) "+" else "") + summary.gdpDelta.toBudgetString(),
                         isPositive = summary.gdpDelta >= 0,
                     )
+                }
+            }
+
+            if (summary.bulletin.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                NssPanel(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "WHAT HAPPENED",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = NssPrimary,
+                        letterSpacing = 2.sp,
+                    )
+                    summary.bulletin.forEach { line ->
+                        Text(
+                            text = "• $line",
+                            fontSize = 12.sp,
+                            color = NssMutedForeground,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
             }
 

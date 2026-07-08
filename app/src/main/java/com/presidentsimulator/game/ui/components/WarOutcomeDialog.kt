@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.SentimentVeryDissatisfied
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,34 +24,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.presidentsimulator.game.data.CovertMission
-import com.presidentsimulator.game.data.GameState
-import com.presidentsimulator.game.data.MissionStatus
+import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.ui.theme.NssBackground
+import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssRed
-import com.presidentsimulator.game.ui.theme.NssSky
+import com.presidentsimulator.game.viewmodel.toBudgetString
+import com.presidentsimulator.game.viewmodel.toCasualtyString
+import kotlin.math.roundToInt
 
 @Composable
-fun MissionResultDialog(
-    mission: CovertMission,
-    state: GameState,
+fun WarOutcomeDialog(
+    outcome: WarOutcome,
     onDismiss: () -> Unit,
 ) {
-    val rival = state.diplomacy.rivalById(mission.targetCountryId)
-    val targetName = rival?.name ?: mission.targetCountryId
-    val isSuccess = mission.status == MissionStatus.SUCCESS
-
-    val color = if (isSuccess) NssSky else NssRed
-    val icon = if (isSuccess) Icons.Default.CheckCircleOutline else Icons.Default.ErrorOutline
-    val title = if (isSuccess) "OPERATION SUCCESSFUL" else "OPERATION COMPROMISED"
-    val description = if (isSuccess) {
-        "Operatives completed ${mission.missionType.displayName} in $targetName."
-    } else {
-        "Operatives were compromised on ${mission.missionType.displayName} in $targetName."
-    }
+    val color = if (outcome.victory) NssEmerald else NssRed
+    val icon = if (outcome.victory) Icons.Default.MilitaryTech else Icons.Default.SentimentVeryDissatisfied
+    val title = if (outcome.victory) "VICTORY" else "DEFEAT"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -66,46 +57,30 @@ fun MissionResultDialog(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(64.dp),
-            )
-
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = title,
-                color = color,
-                fontWeight = FontWeight.Black,
-                fontSize = 18.sp,
-                letterSpacing = 2.sp,
-                textAlign = TextAlign.Center,
-            )
-
+            Text(title, color = color, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp)
             Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                text = description,
+                text = "War with ${outcome.targetName} ended after ${outcome.monthsActive} months.",
                 color = NssForeground,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
             )
-
-            if (mission.outcomeSummary.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = mission.outcomeSummary,
-                    color = NssMutedForeground,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = buildString {
+                    append("Casualties · ours ${outcome.playerCasualties.toCasualtyString()}")
+                    append(" · enemy ${outcome.enemyCasualties.toCasualtyString()}\n")
+                    append("Settlement · ${if (outcome.budgetDelta >= 0) "+" else ""}${outcome.budgetDelta.toBudgetString()}")
+                    append(" · approval ${if (outcome.approvalDelta >= 0) "+" else ""}${outcome.approvalDelta.roundToInt()}")
+                    append(" · front ${outcome.finalProgress.roundToInt()}%")
+                },
+                color = NssMutedForeground,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            )
             Spacer(modifier = Modifier.height(24.dp))
-
             Text(
                 text = "ACKNOWLEDGE",
                 modifier = Modifier

@@ -265,20 +265,28 @@ class EspionageSecurityViewModel(
     ): Pair<GameState, CovertMission> {
         val success = random.nextFloat() < mission.successProbability
         return if (success) {
-            applyMissionSuccess(state, mission) to mission.copy(
+            val (next, summary) = applyMissionSuccess(state, mission)
+            next to mission.copy(
                 progressTicks = mission.requiredTicks,
                 status = MissionStatus.SUCCESS,
+                outcomeSummary = summary,
             )
         } else {
-            applyMissionFailure(state, mission) to mission.copy(
+            val (next, summary) = applyMissionFailure(state, mission)
+            next to mission.copy(
                 progressTicks = mission.requiredTicks,
                 status = MissionStatus.FAILED,
+                outcomeSummary = summary,
             )
         }
     }
 
-    private fun applyMissionSuccess(state: GameState, mission: CovertMission): GameState {
-        val rival = state.diplomacy.rivalById(mission.targetCountryId) ?: return state
+    private fun applyMissionSuccess(
+        state: GameState,
+        mission: CovertMission,
+    ): Pair<GameState, String> {
+        val rival = state.diplomacy.rivalById(mission.targetCountryId)
+            ?: return state to "Target nation not found."
         return when (mission.missionType) {
             MissionType.STEAL_TECHNOLOGY -> {
                 val stealable = TechCatalog.all.filter { tech ->
@@ -296,7 +304,7 @@ class EspionageSecurityViewModel(
                         espionage = state.espionage.copy(
                             intelligencePoints = state.espionage.intelligencePoints + 12,
                         ),
-                    )
+                    ) to "Stolen technology: ${stolen.name} (+25 science, +12 intel)."
                 } else {
                     state.copy(
                         research = state.research.copy(
@@ -305,7 +313,7 @@ class EspionageSecurityViewModel(
                         espionage = state.espionage.copy(
                             intelligencePoints = state.espionage.intelligencePoints + 16,
                         ),
-                    )
+                    ) to "No unlockable tech available — recovered +80 science and +16 intel."
                 }
             }
             MissionType.SABOTAGE_ECONOMY -> state.copy(
@@ -318,7 +326,7 @@ class EspionageSecurityViewModel(
                 vitals = state.vitals.copy(
                     budget = state.vitals.budget + 2_000_000_000L,
                 ),
-            )
+            ) to "Diverted industrial assets (+$2.0B) · rival strength −8% · relations −12."
             MissionType.FUND_REBELS -> state.copy(
                 diplomacy = state.diplomacy.updateRival(rival.id) {
                     it.copy(
@@ -329,7 +337,7 @@ class EspionageSecurityViewModel(
                 espionage = state.espionage.copy(
                     intelligencePoints = state.espionage.intelligencePoints + 6,
                 ),
-            )
+            ) to "Insurgency funded · rival strength −12% · relations −20 · +6 intel."
             MissionType.ASSASSINATE_LEADER -> state.copy(
                 diplomacy = state.diplomacy.updateRival(rival.id) {
                     it.copy(
@@ -343,15 +351,17 @@ class EspionageSecurityViewModel(
                 espionage = state.espionage.copy(
                     intelligencePoints = state.espionage.intelligencePoints + 10,
                 ),
-            )
+            ) to "Leadership shock · rival strength −20% · relations −35 · approval +3 · +10 intel."
         }
     }
 
-    private fun applyMissionFailure(state: GameState, mission: CovertMission): GameState {
-        val rival = state.diplomacy.rivalById(mission.targetCountryId) ?: return state
-        // Caught operatives: diplomatic blowback and possible agent loss.
+    private fun applyMissionFailure(
+        state: GameState,
+        mission: CovertMission,
+    ): Pair<GameState, String> {
+        val rival = state.diplomacy.rivalById(mission.targetCountryId) ?: return state to "Mission failed."
         val loseSpy = random.nextFloat() < 0.35f
-        return state.copy(
+        val next = state.copy(
             vitals = state.vitals.copy(
                 approval = (state.vitals.approval - 2f).coerceIn(0f, 100f),
             ),
@@ -373,6 +383,12 @@ class EspionageSecurityViewModel(
                     .coerceIn(0f, 100f),
             ),
         )
+        val summary = buildString {
+            append("Exposed · relations −18 · approval −2 · intel −4")
+            if (loseSpy) append(" · spy lost")
+            append(" · instability +2")
+        }
+        return next to summary
     }
 
     private fun regenerateIntelligence(state: GameState): GameState {

@@ -107,6 +107,8 @@ data class WarState(
     val enemyCasualties: Long = 0L,
     val monthsActive: Int = 0,
     val currentTactic: WarTactic = WarTactic.OFFENSIVE,
+    /** Most recent monthly battle note for UI / turn bulletin. */
+    val lastBattleSummary: String = "",
 )
 
 /**
@@ -214,6 +216,32 @@ data class DiplomacyState(
                 relationshipScore = -55,
                 militaryStrength = 900.0,
                 economicPower = 1.35,
+            ),
+            RivalNation(
+                id = "aurumcoast",
+                name = "Aurum Coast",
+                flagEmoji = "🟧",
+                relationshipScore = 40,
+                militaryStrength = 360.0,
+                economicPower = 0.88,
+                hasTradeTreaty = true,
+            ),
+            RivalNation(
+                id = "kryos",
+                name = "Kryos Directorate",
+                flagEmoji = "⬜",
+                relationshipScore = -35,
+                militaryStrength = 740.0,
+                economicPower = 1.12,
+            ),
+            RivalNation(
+                id = "verdehaan",
+                name = "Verdehaan Compact",
+                flagEmoji = "🟫",
+                relationshipScore = 18,
+                militaryStrength = 290.0,
+                economicPower = 0.65,
+                hasNonAggressionPact = true,
             ),
         )
     }

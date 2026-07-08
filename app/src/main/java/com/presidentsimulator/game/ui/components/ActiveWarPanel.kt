@@ -108,6 +108,15 @@ fun ActiveWarPanel(
             WarStat("Readiness", state.effectiveCombatStrength.roundToInt().toString())
         }
 
+        if (war.lastBattleSummary.isNotBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Last battle: ${war.lastBattleSummary}",
+                fontSize = 11.sp,
+                color = NssMutedForeground,
+            )
+        }
+
         Spacer(modifier = Modifier.height(14.dp))
         Text("TACTICAL ORDERS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = NssMutedForeground, letterSpacing = 2.sp)
 

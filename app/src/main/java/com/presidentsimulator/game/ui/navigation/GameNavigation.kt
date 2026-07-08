@@ -37,6 +37,7 @@ import com.presidentsimulator.game.ui.components.MissionResultDialog
 import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.TurnSummaryDialog
+import com.presidentsimulator.game.ui.components.WarOutcomeDialog
 import com.presidentsimulator.game.ui.components.collectAlertCount
 import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssBackground
@@ -69,12 +70,13 @@ fun GameNavigation(
     val activeEvent by viewModel.currentActiveEvent.collectAsState()
     val turnSummary by viewModel.turnSummary.collectAsState()
     val missionResults by viewModel.missionResults.collectAsState()
+    val warOutcome by viewModel.warOutcome.collectAsState()
     val showLaunch by viewModel.showLaunchScreen.collectAsState()
     val hasSave by viewModel.hasSave.collectAsState()
     val gameOver = state.gameOver.isGameOver
     val isVictory = state.gameOver.isVictory
     val timeBlocked = activeEvent != null || gameOver ||
-        turnSummary != null || missionResults.isNotEmpty()
+        turnSummary != null || missionResults.isNotEmpty() || warOutcome != null
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -114,7 +116,7 @@ fun GameNavigation(
     GameAudioBridge(state = state)
     GameAudioCrisisEffect(hasActiveEvent = activeEvent != null)
 
-    // Overlay priority: crisis events > mission results > turn summary > campaign end
+    // Overlay priority: crisis > war end > missions > turn summary > campaign end
     activeEvent?.let { event ->
         EventCrisisDialog(
             event = event,
@@ -125,8 +127,20 @@ fun GameNavigation(
         )
     }
 
+    if (activeEvent == null) {
+        warOutcome?.let { outcome ->
+            WarOutcomeDialog(
+                outcome = outcome,
+                onDismiss = {
+                    audio.playClick()
+                    viewModel.clearWarOutcome()
+                },
+            )
+        }
+    }
+
     val pendingMission = missionResults.firstOrNull()
-    if (activeEvent == null && pendingMission != null) {
+    if (activeEvent == null && warOutcome == null && pendingMission != null) {
         MissionResultDialog(
             mission = pendingMission,
             state = state,
@@ -137,7 +151,7 @@ fun GameNavigation(
         )
     }
 
-    if (activeEvent == null && pendingMission == null) {
+    if (activeEvent == null && warOutcome == null && pendingMission == null) {
         turnSummary?.let { summary ->
             TurnSummaryDialog(
                 summary = summary,

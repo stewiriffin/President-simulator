@@ -22,8 +22,10 @@ import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.data.TreatyType
 import com.presidentsimulator.game.data.TurnSummary
+import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.data.CovertMission
 import com.presidentsimulator.game.data.MissionStatus
+import com.presidentsimulator.game.data.TechCatalog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +61,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _missionResults = MutableStateFlow<List<CovertMission>>(emptyList())
     val missionResults: StateFlow<List<CovertMission>> = _missionResults.asStateFlow()
+
+    private val _warOutcome = MutableStateFlow<WarOutcome?>(null)
+    val warOutcome: StateFlow<WarOutcome?> = _warOutcome.asStateFlow()
 
     /** Whether a persisted save exists so the launch screen can offer Continue. */
     private val _hasSave = MutableStateFlow(false)
@@ -100,8 +105,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun advanceTimeTick() {
         if (_currentActiveEvent.value != null) return
         if (_state.value.gameOver.isGameOver) return
+        if (_turnSummary.value != null) return
+        if (_missionResults.value.isNotEmpty()) return
+        if (_warOutcome.value != null) return
 
-        val beforeMissions = _state.value.espionage.activeMissions.associateBy { it.id }
+        val before = _state.value
+        val beforeMissions = before.espionage.activeMissions.associateBy { it.id }
+        val beforeUnlocked = before.research.unlockedTechIds.toSet()
+        val beforeActiveLaws = before.legal.activeLawIds.toSet()
+        val beforePending = before.legal.pendingLaws.map { it.lawId }.toSet()
 
         _state.update { current ->
             if (current.gameOver.isGameOver) return@update current
@@ -157,8 +169,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             next
         }
 
+        val after = _state.value
+        diplomacyEngine.consumeLastResolvedWar()?.let { outcome ->
+            _warOutcome.value = outcome
+            stopAutoTick()
+        }
+
         // Build turn summary before auto-save so deltas can be computed.
-        val beforeSnap = _state.value.analytics.history.takeLast(2)
+        val beforeSnap = after.analytics.history.takeLast(2)
         if (beforeSnap.size >= 2) {
             val prev = beforeSnap[beforeSnap.size - 2]
             val curr = beforeSnap.last()
@@ -169,30 +187,99 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 approvalDelta = curr.approval - prev.approval,
                 populationDelta = curr.population - prev.population,
                 gdpDelta = curr.gdp - prev.gdp,
-                netIncome = _state.value.netIncome,
+                netIncome = after.netIncome,
+                bulletin = buildMonthlyBulletin(
+                    before = before,
+                    after = after,
+                    beforeUnlocked = beforeUnlocked,
+                    beforeActiveLaws = beforeActiveLaws,
+                    beforePending = beforePending,
+                ),
             )
         }
 
-        if (_state.value.gameOver.isGameOver) {
+        if (after.gameOver.isGameOver) {
             stopAutoTick()
         } else {
-            // Check for completed spy missions
-            val afterMissions = _state.value.espionage.activeMissions
-            
-            val newlyResolved = afterMissions.filter { after ->
-                val before = beforeMissions[after.id]
-                before?.status == MissionStatus.ACTIVE &&
-                (after.status == MissionStatus.SUCCESS || after.status == MissionStatus.FAILED)
+            val newlyResolved = after.espionage.activeMissions.filter { mission ->
+                val prior = beforeMissions[mission.id]
+                prior?.status == MissionStatus.ACTIVE &&
+                    (mission.status == MissionStatus.SUCCESS || mission.status == MissionStatus.FAILED)
             }
-            
+
             if (newlyResolved.isNotEmpty()) {
                 _missionResults.value = _missionResults.value + newlyResolved
+                stopAutoTick()
             }
 
             // Auto-save after every tick.
             saveGameProgress()
             maybeTriggerEvent()
+            if (_currentActiveEvent.value != null) {
+                stopAutoTick()
+            }
         }
+    }
+
+    private fun buildMonthlyBulletin(
+        before: GameState,
+        after: GameState,
+        beforeUnlocked: Set<String>,
+        beforeActiveLaws: Set<String>,
+        beforePending: Set<String>,
+    ): List<String> {
+        val lines = mutableListOf<String>()
+        if (after.production.energyShortage) {
+            lines += "Energy shortage — industrial output penalized to 30%."
+        }
+        if (after.production.foodShortage) {
+            lines += "Food shortage — approval and population under pressure."
+        }
+        after.diplomacy.activeWar?.lastBattleSummary?.takeIf { it.isNotBlank() }?.let {
+            lines += "War: $it"
+        }
+        _warOutcome.value?.let { war ->
+            lines += if (war.victory) {
+                "War won vs ${war.targetName} after ${war.monthsActive} months."
+            } else {
+                "War lost vs ${war.targetName} after ${war.monthsActive} months."
+            }
+        }
+        val newTechs = after.research.unlockedTechIds.toSet() - beforeUnlocked
+        newTechs.forEach { techId ->
+            val name = TechCatalog.byId(techId)?.name ?: techId
+            lines += "Technology unlocked: $name"
+        }
+        val enacted = after.legal.activeLawIds.toSet() - beforeActiveLaws
+        enacted.forEach { lawId ->
+            val name = com.presidentsimulator.game.data.LawCatalog.byId(lawId)?.name ?: lawId
+            lines += "Law enacted: $name"
+        }
+        val repealed = beforeActiveLaws - after.legal.activeLawIds.toSet()
+        repealed.forEach { lawId ->
+            if (lawId !in beforePending || after.legal.pendingLaws.none { it.lawId == lawId }) {
+                val name = com.presidentsimulator.game.data.LawCatalog.byId(lawId)?.name ?: lawId
+                lines += "Law repealed: $name"
+            }
+        }
+        after.espionage.activeMissions
+            .filter { it.status == MissionStatus.SUCCESS || it.status == MissionStatus.FAILED }
+            .filter { before.espionage.activeMissions.find { b -> b.id == it.id }?.status == MissionStatus.ACTIVE }
+            .forEach { mission ->
+                val rival = after.diplomacy.rivalById(mission.targetCountryId)?.name ?: mission.targetCountryId
+                val tag = if (mission.status == MissionStatus.SUCCESS) "succeeded" else "failed"
+                lines += "Covert op $tag in $rival"
+            }
+        if (after.internalSecurity.coupRisk >= 60f) {
+            lines += "Coup risk elevated (${after.internalSecurity.coupRisk.roundToInt()}%)."
+        }
+        if (after.governance.activeResolution != null) {
+            lines += "UN resolution pending: ${after.governance.activeResolution!!.type.displayName}"
+        }
+        if (after.trade.activeDeals.isNotEmpty()) {
+            lines += "Trade contracts active: ${after.trade.activeDeals.size}"
+        }
+        return lines.take(8)
     }
 
     fun dismissMissionResult() {
@@ -200,6 +287,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (current.isNotEmpty()) {
             _missionResults.value = current.drop(1)
         }
+    }
+
+    fun clearWarOutcome() {
+        _warOutcome.value = null
     }
 
     // ── Global governance ────────────────────────────────────────────────────
@@ -639,7 +730,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _isAutoTicking.value = true
         autoTickJob = viewModelScope.launch {
             while (isActive) {
-                if (_currentActiveEvent.value == null) {
+                val blocked = _currentActiveEvent.value != null ||
+                    _turnSummary.value != null ||
+                    _missionResults.value.isNotEmpty() ||
+                    _warOutcome.value != null ||
+                    _state.value.gameOver.isGameOver
+                if (!blocked) {
                     advanceTimeTick()
                 }
                 delay(TICK_INTERVAL_MS)

@@ -5,6 +5,7 @@ import com.presidentsimulator.game.data.DiplomacyState
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.data.TreatyType
+import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.data.WarState
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -19,6 +20,16 @@ import kotlin.random.Random
 class DiplomacyViewModel(
     private val random: Random = Random.Default,
 ) {
+
+    /** Set when a war ends during [simulateWarBattle]; consumed by [GameViewModel]. */
+    var lastResolvedWar: WarOutcome? = null
+        private set
+
+    fun consumeLastResolvedWar(): WarOutcome? {
+        val outcome = lastResolvedWar
+        lastResolvedWar = null
+        return outcome
+    }
 
     /**
      * Monthly passive diplomacy:
@@ -158,6 +169,15 @@ class DiplomacyViewModel(
             playerCasualties = war.playerCasualties + playerCasualties,
             enemyCasualties = war.enemyCasualties + enemyCasualties,
             monthsActive = war.monthsActive + 1,
+            lastBattleSummary = buildString {
+                append(if (playerWonSkirmish) "Front advanced " else "Front fell back ")
+                append("${abs(progressDelta.roundToInt())} pts · ")
+                append("our losses ${playerCasualties.toCasualtyString()} · ")
+                append("enemy ${enemyCasualties.toCasualtyString()}")
+                if (hardwareLossTanks > 0 || hardwareLossJets > 0) {
+                    append(" · hardware -$hardwareLossTanks tanks / -$hardwareLossJets jets")
+                }
+            },
         )
 
         val midState = state.copy(
@@ -482,6 +502,7 @@ class DiplomacyViewModel(
     private fun endWar(state: GameState, victory: Boolean): GameState {
         val war = state.diplomacy.activeWar ?: return state
         val targetId = war.targetCountryId
+        val targetName = state.diplomacy.rivalById(targetId)?.name ?: targetId
 
         val diplomacy: DiplomacyState = if (victory) {
             state.diplomacy
@@ -507,6 +528,18 @@ class DiplomacyViewModel(
 
         val budgetDelta = if (victory) VICTORY_REPARATIONS else -DEFEAT_PENALTY
         val approvalDelta = if (victory) 12f else -18f
+
+        lastResolvedWar = WarOutcome(
+            victory = victory,
+            targetCountryId = targetId,
+            targetName = targetName,
+            monthsActive = war.monthsActive,
+            playerCasualties = war.playerCasualties,
+            enemyCasualties = war.enemyCasualties,
+            budgetDelta = budgetDelta,
+            approvalDelta = approvalDelta,
+            finalProgress = war.warProgress,
+        )
 
         return state.copy(
             vitals = state.vitals.copy(
