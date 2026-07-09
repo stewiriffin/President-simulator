@@ -85,14 +85,21 @@ class ProductionLawViewModel {
         val goodsProduced = minOf(goodsCapacity, goodsFromMaterials)
 
         val goodsAvailable = production.goods + goodsProduced
-        val goodsSold = goodsAvailable
+        val exportQuota = state.trade.goodsExportQuota.coerceIn(0f, 1f)
+        val goodsSold = (goodsAvailable * exportQuota).roundToLong().coerceIn(0L, goodsAvailable)
+        val goodsStockpiled = goodsAvailable - goodsSold
+        val stockpileDecay = if (exportQuota < 1f && goodsStockpiled > 0L) {
+            (goodsStockpiled * STOCKPILE_DECAY_RATE).roundToLong().coerceAtLeast(0L)
+        } else {
+            0L
+        }
         val goodsRevenue = goodsSold * GOODS_SALE_PRICE
 
         val foodBuffer = NationalPerkEffects.foodSecurityBuffer(nationPerk)
         val nextEnergy = (production.energy + energyProduced - energyConsumed).coerceAtLeast(0L)
         val nextFood = (production.food + foodProduced - foodConsumed).coerceAtLeast(0L)
         val nextMaterials = (materialsAvailable - materialsConsumed).coerceAtLeast(0L)
-        val nextGoods = 0L
+        val nextGoods = (goodsStockpiled - stockpileDecay).coerceAtLeast(0L)
 
         val foodShortage = foodProduced + production.food + foodBuffer < foodConsumed
         var approval = state.vitals.approval + legal.combinedApprovalModifier * 0.05f
@@ -400,6 +407,7 @@ class ProductionLawViewModel {
         const val MATERIALS_PER_FACTORY = 40L
         const val GOODS_PER_FACTORY = 55L
         const val GOODS_SALE_PRICE = 4_000_000L
+        const val STOCKPILE_DECAY_RATE = 0.03f
 
         fun canEnact(state: GameState, law: Law): Boolean =
             !state.legal.isActive(law.id) &&

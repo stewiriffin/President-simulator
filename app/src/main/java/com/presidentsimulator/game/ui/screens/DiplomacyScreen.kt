@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +34,7 @@ import com.presidentsimulator.game.data.RivalNation
 import com.presidentsimulator.game.data.TradeCommodity
 import com.presidentsimulator.game.data.TradeType
 import com.presidentsimulator.game.data.TreatyType
+import com.presidentsimulator.game.data.WarGoal
 import com.presidentsimulator.game.ui.components.ActiveWarPanel
 import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCard
@@ -109,6 +111,7 @@ fun DiplomacyScreen(
                 onLaunchOffensive = viewModel::launchOffensive,
                 onHoldDefensiveLine = viewModel::holdDefensiveLine,
                 onProposeArmistice = viewModel::signArmistice,
+                onClaimSettlement = viewModel::claimWarSettlement,
                 modifier = Modifier.padding(horizontal = Dimens.ContentPadding, vertical = Dimens.SpacingSmall),
             )
         }
@@ -170,7 +173,7 @@ fun DiplomacyScreen(
                             onFormAlliance = {
                                 viewModel.formAlliance("Pact with ${rival.name}", listOf(rival.id))
                             },
-                            onDeclareWar = { viewModel.declareWar(rival.id) },
+                            onDeclareWar = { goal -> viewModel.declareWar(rival.id, goal) },
                         )
                     }
                 }
@@ -339,8 +342,9 @@ private fun RivalActionPanel(
     onNegotiateTradeTreaty: () -> Unit,
     onNegotiateNonAggression: () -> Unit,
     onFormAlliance: () -> Unit,
-    onDeclareWar: () -> Unit,
+    onDeclareWar: (WarGoal) -> Unit,
 ) {
+    var selectedWarGoal by remember { mutableStateOf(WarGoal.REPARATIONS) }
     val canTrade = TradeMarketViewModel.canProposeDeal(state, rival.id)
     val canAlliance = rival.relationshipScore >= GovernanceViewModel.ALLIANCE_MIN_RELATION &&
         state.diplomacy.activeWar?.targetCountryId != rival.id &&
@@ -385,8 +389,24 @@ private fun RivalActionPanel(
                     OutlinedButton(onClick = onFormAlliance, enabled = canAlliance, modifier = Modifier.fillMaxWidth()) {
                         Text("Form Alliance")
                     }
+                    Text("War objective", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        WarGoal.entries.forEach { goal ->
+                            OutlinedButton(
+                                onClick = { selectedWarGoal = goal },
+                                enabled = canWar,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    goal.displayName.split(" ").first(),
+                                    fontSize = 9.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
                     Button(
-                        onClick = onDeclareWar,
+                        onClick = { onDeclareWar(selectedWarGoal) },
                         enabled = canWar,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(

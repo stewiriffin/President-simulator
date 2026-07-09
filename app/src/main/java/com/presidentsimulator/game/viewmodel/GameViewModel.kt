@@ -338,6 +338,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { tradeEngine.setTariffRate(it, rate) }
     }
 
+    fun setGoodsExportQuota(quota: Float) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { tradeEngine.setGoodsExportQuota(it, quota) }
+    }
+
     fun buyFromMarket(commodity: TradeCommodity, amount: Long = TradeMarketViewModel.SPOT_BUNDLE_SIZE) {
         if (_currentActiveEvent.value != null) return
         _state.update { tradeEngine.buyFromMarket(it, commodity, amount) }
@@ -629,9 +634,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Military & diplomacy actions ─────────────────────────────────────────
 
-    fun declareWar(targetCountryId: String) {
+    fun declareWar(targetCountryId: String, warGoal: com.presidentsimulator.game.data.WarGoal = com.presidentsimulator.game.data.WarGoal.REPARATIONS) {
         if (_currentActiveEvent.value != null) return
-        _state.update { diplomacyEngine.declareWar(it, targetCountryId) }
+        _state.update { diplomacyEngine.declareWar(it, targetCountryId, warGoal) }
+    }
+
+    fun claimWarSettlement() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { diplomacyEngine.claimWarSettlement(it) }
     }
 
     fun negotiateTreaty(targetCountryId: String, type: TreatyType) {

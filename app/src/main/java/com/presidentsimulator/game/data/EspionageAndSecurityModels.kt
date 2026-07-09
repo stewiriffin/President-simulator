@@ -79,6 +79,8 @@ data class EspionageState(
     val spyCount: Int = 8,
     val intelligencePoints: Int = 20,
     val activeMissions: List<CovertMission> = emptyList(),
+    /** Global exposure from failed or aggressive ops (0–100). High exposure invites retaliation. */
+    val exposureLevel: Float = 0f,
 ) {
     val availableSpies: Int
         get() = (spyCount - activeMissions.count { it.status == MissionStatus.ACTIVE })

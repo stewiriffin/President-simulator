@@ -6,6 +6,7 @@ import com.presidentsimulator.game.data.DiplomacyState
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.data.TreatyType
+import com.presidentsimulator.game.data.WarGoal
 import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.data.WarState
 import kotlin.math.abs
@@ -92,7 +93,7 @@ class DiplomacyViewModel(
      * Declares war on [targetCountryId]: relations → -100, mobilize forces,
      * raise DEFCON, and initialise a [WarState].
      */
-    fun declareWar(state: GameState, targetCountryId: String): GameState {
+    fun declareWar(state: GameState, targetCountryId: String, warGoal: WarGoal = WarGoal.REPARATIONS): GameState {
         val rival = state.diplomacy.rivalById(targetCountryId) ?: return state
         if (state.diplomacy.activeWar != null) return state
         if (rival.hasNonAggressionPact) return state
@@ -112,6 +113,7 @@ class DiplomacyViewModel(
                     playerCasualties = 0L,
                     enemyCasualties = 0L,
                     monthsActive = 0,
+                    warGoal = warGoal,
                 ),
             )
 
@@ -270,6 +272,17 @@ class DiplomacyViewModel(
                     diplomaticInfluence = state.diplomacy.diplomaticInfluence - type.influenceCost,
                 ),
         )
+    }
+
+    /**
+     * Ends an active war early when progress is favorable (≥60).
+     * Rewards scale with front-line advantage but are below a total victory.
+     */
+    fun claimWarSettlement(state: GameState): GameState {
+        val war = state.diplomacy.activeWar ?: return state
+        if (war.warProgress < EARLY_SETTLEMENT_MIN_PROGRESS) return state
+        val scale = (war.warProgress / 100f).coerceIn(0.55f, 0.90f)
+        return endWar(state, victory = true, rewardScale = scale, settlementNote = "Negotiated settlement at ${war.warProgress.roundToInt()}% front advantage")
     }
 
     /**
@@ -509,19 +522,34 @@ class DiplomacyViewModel(
         return pressure
     }
 
-    private fun endWar(state: GameState, victory: Boolean): GameState {
+    private fun endWar(
+        state: GameState,
+        victory: Boolean,
+        rewardScale: Float = 1f,
+        settlementNote: String = "",
+    ): GameState {
         val war = state.diplomacy.activeWar ?: return state
         val targetId = war.targetCountryId
         val targetName = state.diplomacy.rivalById(targetId)?.name ?: targetId
+        val goal = war.warGoal
+        val scale = rewardScale.coerceIn(0.5f, 1f)
 
         val diplomacy: DiplomacyState = if (victory) {
             state.diplomacy
                 .updateRival(targetId) { rival ->
+                    val strengthFactor = when (goal) {
+                        WarGoal.DEMILITARIZE -> 0.45
+                        WarGoal.BUFFER_ZONE -> 0.58
+                        WarGoal.REPARATIONS -> 0.65
+                    }
                     rival.copy(
-                        relationshipScore = -60,
-                        militaryStrength = (rival.militaryStrength * 0.65).coerceAtLeast(100.0),
+                        relationshipScore = when (goal) {
+                            WarGoal.BUFFER_ZONE -> -35
+                            else -> -60
+                        },
+                        militaryStrength = (rival.militaryStrength * strengthFactor).coerceAtLeast(80.0),
                         hasTradeTreaty = false,
-                        hasNonAggressionPact = false,
+                        hasNonAggressionPact = goal == WarGoal.BUFFER_ZONE,
                     )
                 }
                 .copy(activeWar = null)
@@ -536,8 +564,28 @@ class DiplomacyViewModel(
                 .copy(activeWar = null)
         }
 
-        val budgetDelta = if (victory) VICTORY_REPARATIONS else -DEFEAT_PENALTY
-        val approvalDelta = if (victory) 12f else -18f
+        val (budgetDelta, approvalDelta) = if (victory) {
+            when (goal) {
+                WarGoal.REPARATIONS -> Pair(
+                    (VICTORY_REPARATIONS * 1.25f * scale).toLong(),
+                    12f * scale,
+                )
+                WarGoal.DEMILITARIZE -> Pair(
+                    (VICTORY_REPARATIONS * 0.85f * scale).toLong(),
+                    10f * scale,
+                )
+                WarGoal.BUFFER_ZONE -> Pair(
+                    (VICTORY_REPARATIONS * 0.70f * scale).toLong(),
+                    (12f + 8f) * scale,
+                )
+            }
+        } else {
+            Pair(-DEFEAT_PENALTY, -18f)
+        }
+
+        val note = settlementNote.ifBlank {
+            if (victory) "War goal achieved: ${goal.displayName}" else "War lost against $targetName"
+        }
 
         lastResolvedWar = WarOutcome(
             victory = victory,
@@ -549,6 +597,8 @@ class DiplomacyViewModel(
             budgetDelta = budgetDelta,
             approvalDelta = approvalDelta,
             finalProgress = war.warProgress,
+            warGoalLabel = goal.displayName,
+            settlementNote = note,
         )
 
         return state.copy(
@@ -575,6 +625,7 @@ class DiplomacyViewModel(
         const val STATE_VISIT_REL_BONUS = 14
         const val VICTORY_REPARATIONS = 20_000_000_000L
         const val DEFEAT_PENALTY = 15_000_000_000L
+        const val EARLY_SETTLEMENT_MIN_PROGRESS = 60f
         const val RECRUIT_COST_PER_SOLDIER = 50_000L
         const val RECRUIT_BATCH_SIZE = 10_000L
         const val TANK_UNIT_COST = 15_000_000L

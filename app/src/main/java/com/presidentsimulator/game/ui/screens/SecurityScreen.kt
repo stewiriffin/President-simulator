@@ -369,6 +369,11 @@ private fun ForeignIntelligenceView(
                 Text("Available spies: ${espionage.availableSpies} / ${espionage.spyCount}", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
                 Text("Intelligence budget: ${espionage.intelligencePoints} pts", fontSize = 11.sp, color = NssMutedForeground)
                 Text("Active operations: ${espionage.activeMissionCount}", fontSize = 11.sp, color = NssMutedForeground)
+                Text(
+                    text = "Global exposure: ${espionage.exposureLevel.roundToInt()}%",
+                    fontSize = 11.sp,
+                    color = if (espionage.exposureLevel >= 55f) NssRed else NssMutedForeground,
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 val canRecruit = state.vitals.budget >= EspionageSecurityViewModel.SPY_RECRUIT_COST
                 Text(

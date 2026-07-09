@@ -123,6 +123,15 @@ class TradeMarketViewModel(
         )
     }
 
+    fun setGoodsExportQuota(state: GameState, quota: Float): GameState {
+        if (state.gameOver.isGameOver) return state
+        return state.copy(
+            trade = state.trade.copy(
+                goodsExportQuota = quota.coerceIn(0f, 1f),
+            ),
+        )
+    }
+
     /**
      * Instant market purchase of [amount] units at the current global price (+ tariff).
      */

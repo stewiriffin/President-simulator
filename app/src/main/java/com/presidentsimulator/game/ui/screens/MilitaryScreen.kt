@@ -121,6 +121,7 @@ fun MilitaryScreen(
                 onLaunchOffensive = viewModel::launchOffensive,
                 onHoldDefensiveLine = viewModel::holdDefensiveLine,
                 onProposeArmistice = viewModel::signArmistice,
+                onClaimSettlement = viewModel::claimWarSettlement,
                 modifier = Modifier.padding(horizontal = Dimens.ContentPadding, vertical = Dimens.SpacingSmall),
             )
         }

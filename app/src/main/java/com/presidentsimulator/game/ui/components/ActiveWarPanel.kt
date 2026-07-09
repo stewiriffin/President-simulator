@@ -51,6 +51,7 @@ fun ActiveWarPanel(
     onLaunchOffensive: () -> Unit,
     onHoldDefensiveLine: () -> Unit,
     onProposeArmistice: () -> Unit,
+    onClaimSettlement: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val rivalName = state.diplomacy.rivalById(war.targetCountryId)?.name ?: war.targetCountryId
@@ -87,7 +88,7 @@ fun ActiveWarPanel(
             modifier = Modifier.padding(top = 8.dp),
         )
         Text(
-            text = "Month ${war.monthsActive} · Posture: ${state.military.deployment.name}",
+            text = "Month ${war.monthsActive} · Goal: ${war.warGoal.displayName} · Posture: ${state.military.deployment.name}",
             fontSize = 11.sp,
             color = NssMutedForeground,
         )
@@ -136,6 +137,13 @@ fun ActiveWarPanel(
             enabled = canAffordPeace,
             onClick = onProposeArmistice,
         )
+        if (war.warProgress >= 60f && onClaimSettlement != null) {
+            WarActionButton(
+                label = "Negotiate Settlement (${war.warProgress.roundToInt()}% advantage)",
+                color = Color(0xFF16A34A),
+                onClick = onClaimSettlement,
+            )
+        }
         }
     }
 }

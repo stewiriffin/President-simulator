@@ -95,6 +95,14 @@ enum class WarTactic(val displayName: String) {
     DEFENSIVE("Hold Ground"),
 }
 
+/** Strategic objective chosen when war is declared — shapes victory rewards. */
+@Serializable
+enum class WarGoal(val displayName: String) {
+    REPARATIONS("War Reparations"),
+    DEMILITARIZE("Demilitarize Enemy"),
+    BUFFER_ZONE("Political Settlement"),
+}
+
 /**
  * Active conflict against a single rival.
  * [warProgress] is -100 (total defeat) … +100 (total victory).
@@ -107,6 +115,7 @@ data class WarState(
     val enemyCasualties: Long = 0L,
     val monthsActive: Int = 0,
     val currentTactic: WarTactic = WarTactic.OFFENSIVE,
+    val warGoal: WarGoal = WarGoal.REPARATIONS,
     /** Most recent monthly battle note for UI / turn bulletin. */
     val lastBattleSummary: String = "",
 )

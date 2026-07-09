@@ -576,6 +576,7 @@ private fun TradeTab(
     audio: GameAudioManager,
 ) {
     var draftTariff by remember(state.trade.tariffRate) { mutableFloatStateOf(state.trade.tariffRate) }
+    var draftExportQuota by remember(state.trade.goodsExportQuota) { mutableFloatStateOf(state.trade.goodsExportQuota) }
     var selectedPartnerId by remember { mutableStateOf(state.diplomacy.rivals.firstOrNull()?.id) }
     var selectedCommodity by remember { mutableStateOf(TradeCommodity.OIL) }
     var selectedType by remember { mutableStateOf(TradeType.EXPORT) }
@@ -599,6 +600,28 @@ private fun TradeTab(
             onValueChangeFinished = { viewModel.setTariffRate(draftTariff) },
             valueRange = 0f..0.40f,
             colors = SliderDefaults.colors(thumbColor = NssPrimary, activeTrackColor = NssPrimary, inactiveTrackColor = NssBorder),
+        )
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("EXPORT QUOTA", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        Text(
+            text = "${(draftExportQuota * 100f).roundToInt()}% of goods sold · ${(100 - draftExportQuota * 100f).roundToInt()}% stockpiled (3% decay/mo)",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        )
+        Slider(
+            value = draftExportQuota,
+            onValueChange = { draftExportQuota = it },
+            onValueChangeFinished = { viewModel.setGoodsExportQuota(draftExportQuota) },
+            valueRange = 0f..1f,
+            colors = SliderDefaults.colors(thumbColor = NssPrimary, activeTrackColor = NssPrimary, inactiveTrackColor = NssBorder),
+        )
+        Text(
+            text = "Stockpile: ${state.production.goods} units",
+            fontSize = 11.sp,
+            color = NssForeground,
         )
     }
 

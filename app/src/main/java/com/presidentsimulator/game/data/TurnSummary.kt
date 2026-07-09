@@ -24,4 +24,6 @@ data class WarOutcome(
     val budgetDelta: Long,
     val approvalDelta: Float,
     val finalProgress: Float,
+    val warGoalLabel: String = "",
+    val settlementNote: String = "",
 )

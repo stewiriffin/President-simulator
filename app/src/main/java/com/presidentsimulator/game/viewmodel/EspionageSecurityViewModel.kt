@@ -30,6 +30,7 @@ class EspionageSecurityViewModel(
         if (state.gameOver.isGameOver) return state
 
         var next = updateDomesticStability(state)
+        next = processExposureEffects(next)
         if (next.internalSecurity.coupRisk >= 100f) {
             return triggerCoup(next)
         }
@@ -157,15 +158,65 @@ class EspionageSecurityViewModel(
         val rivalSecurity = rivalMilitaryStrength.coerceAtLeast(1.0)
         val powerRatio = (playerPower / (playerPower + rivalSecurity)).toFloat()
         val intelBonus = (state.espionage.intelligencePoints / 200f).coerceIn(0f, 0.15f)
-        val counterIntelPenalty =
-            if (SecurityProtocol.COUNTER_INTEL in state.internalSecurity.activeProtocols) {
-                0.03f
-            } else {
-                0f
-            }
-        return (missionType.baseSuccessChance * 0.55f + powerRatio * 0.40f + intelBonus - counterIntelPenalty)
+        val counterIntelActive = SecurityProtocol.COUNTER_INTEL in state.internalSecurity.activeProtocols
+        val counterIntelBonus = if (counterIntelActive) 0.03f else 0f
+        val exposureDrag = (state.espionage.exposureLevel / 200f).coerceIn(0f, 0.12f)
+        return (missionType.baseSuccessChance * 0.55f + powerRatio * 0.40f + intelBonus + counterIntelBonus - exposureDrag)
             .coerceIn(0.05f, 0.92f)
     }
+
+    private fun processExposureEffects(state: GameState): GameState {
+        var exposure = state.espionage.exposureLevel
+        if (SecurityProtocol.COUNTER_INTEL in state.internalSecurity.activeProtocols) {
+            exposure = (exposure - 4f).coerceAtLeast(0f)
+        } else {
+            exposure = (exposure - 1f).coerceAtLeast(0f)
+        }
+
+        var next = state.copy(
+            espionage = state.espionage.copy(exposureLevel = exposure),
+        )
+
+        if (exposure >= EXPOSURE_RETALIATION_THRESHOLD) {
+            val penalty = ((exposure - EXPOSURE_RETALIATION_THRESHOLD) / 10f).coerceAtMost(4f)
+            val rivals = next.diplomacy.rivals.map { rival ->
+                rival.copy(
+                    relationshipScore = (rival.relationshipScore - penalty.roundToInt())
+                        .coerceIn(-100, 100),
+                )
+            }
+            next = next.copy(
+                diplomacy = next.diplomacy.copy(rivals = rivals),
+                internalSecurity = next.internalSecurity.copy(
+                    instabilityScore = (next.internalSecurity.instabilityScore + penalty * 0.6f)
+                        .coerceIn(0f, 100f),
+                ),
+            )
+        }
+        return next
+    }
+
+    private fun exposureGain(missionType: MissionType, success: Boolean): Float = when {
+        success -> when (missionType) {
+            MissionType.ASSASSINATE_LEADER -> 8f
+            MissionType.FUND_REBELS -> 5f
+            MissionType.SABOTAGE_ECONOMY -> 4f
+            MissionType.STEAL_TECHNOLOGY -> 3f
+        }
+        else -> when (missionType) {
+            MissionType.ASSASSINATE_LEADER -> 18f
+            MissionType.FUND_REBELS -> 12f
+            MissionType.SABOTAGE_ECONOMY -> 9f
+            MissionType.STEAL_TECHNOLOGY -> 6f
+        }
+    }
+
+    private fun withExposure(state: GameState, gain: Float): GameState =
+        state.copy(
+            espionage = state.espionage.copy(
+                exposureLevel = (state.espionage.exposureLevel + gain).coerceIn(0f, 100f),
+            ),
+        )
 
     // ── Internals ────────────────────────────────────────────────────────────
 
@@ -264,16 +315,17 @@ class EspionageSecurityViewModel(
         mission: CovertMission,
     ): Pair<GameState, CovertMission> {
         val success = random.nextFloat() < mission.successProbability
+        val gain = exposureGain(mission.missionType, success)
         return if (success) {
             val (next, summary) = applyMissionSuccess(state, mission)
-            next to mission.copy(
+            withExposure(next, gain) to mission.copy(
                 progressTicks = mission.requiredTicks,
                 status = MissionStatus.SUCCESS,
                 outcomeSummary = summary,
             )
         } else {
             val (next, summary) = applyMissionFailure(state, mission)
-            next to mission.copy(
+            withExposure(next, gain) to mission.copy(
                 progressTicks = mission.requiredTicks,
                 status = MissionStatus.FAILED,
                 outcomeSummary = summary,
@@ -421,6 +473,7 @@ class EspionageSecurityViewModel(
         const val SPY_RECRUIT_COST = 2_000_000_000L
         const val MAX_INTEL_POINTS = 100
         const val MAX_MISSION_LOG = 12
+        const val EXPOSURE_RETALIATION_THRESHOLD = 55f
 
         fun canDeploy(
             state: GameState,

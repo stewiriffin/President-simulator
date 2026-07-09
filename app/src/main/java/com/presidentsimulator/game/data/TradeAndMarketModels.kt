@@ -80,6 +80,8 @@ data class TradeState(
     val lastTariffRevenue: Long = 0L,
     /** National import tariff rate (0–0.50). */
     val tariffRate: Float = 0.10f,
+    /** Share of manufactured goods sold each month (0 = stockpile all, 1 = liquidate all). */
+    val goodsExportQuota: Float = 1.0f,
 ) {
     val netTradeCashflow: Long get() = tradeBalance + lastTariffRevenue
 }

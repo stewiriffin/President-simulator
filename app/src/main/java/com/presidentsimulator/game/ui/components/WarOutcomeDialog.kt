@@ -71,6 +71,24 @@ fun WarOutcomeDialog(
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
             )
+            if (outcome.warGoalLabel.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Objective: ${outcome.warGoalLabel}",
+                    color = NssMutedForeground,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            if (outcome.settlementNote.isNotBlank()) {
+                Text(
+                    text = outcome.settlementNote,
+                    color = NssMutedForeground,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = buildString {
