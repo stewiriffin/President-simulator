@@ -146,17 +146,41 @@ fun ApprovalDemographicsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             NssPanel(modifier = Modifier.fillMaxWidth()) {
+                val electionSeason = viewModel.isElectionSeason()
+                val monthsLeft = remember(state) {
+                    (state.nextElectionYear - state.year) * 12 + (12 - state.month)
+                }.coerceAtLeast(0)
                 Text("CAMPAIGN ACTIONS", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
                 Text(
-                    text = "Spend political capital before the ${state.nextElectionYear} election.",
+                    text = if (electionSeason) {
+                        "Election season — ${monthsLeft}mo to ${state.nextElectionYear}. Actions cost 25% more but hit harder."
+                    } else {
+                        "Spend political capital before the ${state.nextElectionYear} election."
+                    },
                     fontSize = 11.sp,
-                    color = NssMutedForeground,
+                    color = if (electionSeason) NssAccent else NssMutedForeground,
                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                 )
-                CampaignAction.entries.forEach { action ->
-                    val canAfford = state.vitals.budget >= action.cost
+                if (state.demographics.oppositionMomentum > 0f) {
                     Text(
-                        text = "${action.displayName} · ${action.cost.toBudgetString()}",
+                        text = "Opposition momentum: ${state.demographics.oppositionMomentum.roundToInt()}",
+                        fontSize = 11.sp,
+                        color = NssRed,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
+                CampaignAction.entries.forEach { action ->
+                    val cooldown = viewModel.campaignCooldownMonths(action)
+                    val electionPremium = if (electionSeason) 1.25f else 1f
+                    val cost = (action.cost * electionPremium).toLong()
+                    val canAfford = state.vitals.budget >= cost && cooldown == 0
+                    val label = when {
+                        cooldown > 0 -> "${action.displayName} · cooldown ${cooldown}mo"
+                        electionSeason -> "${action.displayName} · ${cost.toBudgetString()} (election rate)"
+                        else -> "${action.displayName} · ${cost.toBudgetString()}"
+                    }
+                    Text(
+                        text = label,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)

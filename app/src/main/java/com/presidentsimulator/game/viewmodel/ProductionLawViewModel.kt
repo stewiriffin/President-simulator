@@ -6,6 +6,8 @@ import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.data.Law
 import com.presidentsimulator.game.data.LawCatalog
 import com.presidentsimulator.game.data.ProductionState
+import com.presidentsimulator.game.data.NationalPerkEffects
+import com.presidentsimulator.game.data.ParliamentarySupport
 import com.presidentsimulator.game.data.PendingLaw
 import kotlin.math.roundToLong
 
@@ -24,11 +26,13 @@ class ProductionLawViewModel {
     fun processProductionTick(state: GameState): GameState {
         val legal = state.legal
         val techEffects = state.research.combinedEffects
+        val nationPerk = NationalPerkEffects.forNationId(state.playerNation.id)
         val productionMod = state.effectiveProductionMultiplier
         val energyDemandMod = legal.combinedEnergyDemandModifier
         val foodDemandMod = legal.combinedFoodDemandModifier
-        val farmMod = techEffects.farmOutputMultiplier
+        val farmMod = techEffects.farmOutputMultiplier * NationalPerkEffects.farmOutputMultiplier(nationPerk)
         val factoryMod = techEffects.factoryOutputMultiplier
+        val materialsMod = NationalPerkEffects.materialsOutputMultiplier(nationPerk)
 
         val economy = state.economy
         val production = state.production
@@ -60,7 +64,7 @@ class ProductionLawViewModel {
             ).roundToLong()
             .coerceAtLeast(0L)
 
-        val materialsProduced = (production.mines * MATERIALS_PER_MINE * effectiveMod)
+        val materialsProduced = (production.mines * MATERIALS_PER_MINE * effectiveMod * materialsMod)
             .roundToLong()
             .coerceAtLeast(0L)
 
@@ -84,12 +88,13 @@ class ProductionLawViewModel {
         val goodsSold = goodsAvailable
         val goodsRevenue = goodsSold * GOODS_SALE_PRICE
 
+        val foodBuffer = NationalPerkEffects.foodSecurityBuffer(nationPerk)
         val nextEnergy = (production.energy + energyProduced - energyConsumed).coerceAtLeast(0L)
         val nextFood = (production.food + foodProduced - foodConsumed).coerceAtLeast(0L)
         val nextMaterials = (materialsAvailable - materialsConsumed).coerceAtLeast(0L)
         val nextGoods = 0L
 
-        val foodShortage = foodProduced + production.food < foodConsumed
+        val foodShortage = foodProduced + production.food + foodBuffer < foodConsumed
         var approval = state.vitals.approval + legal.combinedApprovalModifier * 0.05f
         var population = state.vitals.population
 
@@ -195,9 +200,10 @@ class ProductionLawViewModel {
             )
         )
 
-        if (state.vitals.approval < law.approvalThreshold) {
+        if (!ParliamentarySupport.passesImmediately(state, law)) {
+            val months = ParliamentarySupport.pendingMonths(state, law)
             val legal = nextState.legal.copy(
-                pendingLaws = nextState.legal.pendingLaws + PendingLaw(lawId, true, 3)
+                pendingLaws = nextState.legal.pendingLaws + PendingLaw(lawId, true, months),
             )
             return nextState.copy(legal = legal)
         }
@@ -223,9 +229,10 @@ class ProductionLawViewModel {
         if (!state.legal.isActive(lawId)) return state
         if (state.legal.pendingLaws.any { it.lawId == lawId }) return state
 
-        if (state.vitals.approval < law.approvalThreshold) {
+        if (!ParliamentarySupport.passesImmediately(state, law)) {
+            val months = ParliamentarySupport.pendingMonths(state, law)
             val legal = state.legal.copy(
-                pendingLaws = state.legal.pendingLaws + PendingLaw(lawId, false, 3)
+                pendingLaws = state.legal.pendingLaws + PendingLaw(lawId, false, months),
             )
             return state.copy(legal = legal)
         }
@@ -302,7 +309,12 @@ class ProductionLawViewModel {
         val remainingPending = mutableListOf<PendingLaw>()
 
         state.legal.pendingLaws.forEach { pending ->
+            val law = LawCatalog.byId(pending.lawId)
             val nextTicks = pending.ticksRemaining - 1
+            if (nextTicks <= 0 && law != null && !ParliamentarySupport.passesImmediately(nextState, law)) {
+                remainingPending.add(pending.copy(ticksRemaining = 2))
+                return@forEach
+            }
             if (nextTicks <= 0) {
                 // Enact or repeal
                 val law = LawCatalog.byId(pending.lawId) ?: return@forEach
@@ -391,8 +403,8 @@ class ProductionLawViewModel {
 
         fun canEnact(state: GameState, law: Law): Boolean =
             !state.legal.isActive(law.id) &&
-                state.vitals.budget >= law.activationCost &&
-                state.vitals.approval >= law.approvalThreshold
+                state.legal.pendingLaws.none { it.lawId == law.id } &&
+                state.vitals.budget >= law.activationCost
     }
 }
 

@@ -11,9 +11,12 @@ data class PlayerNation(
     val name: String = "Veltra",
     val flagEmoji: String = "🏛",
     val governmentLabel: String = "Republic",
+    val nationalPerk: NationalPerk = NationalPerk.TRADE_HUB,
 ) {
     fun matchesCountryId(countryId: String): Boolean =
         countryId == id || countryId == LEGACY_PLAYER_COUNTRY_ID
+
+    fun resolvedPerk(): NationalPerk = NationalPerkEffects.forNationId(id)
 }
 
 /**

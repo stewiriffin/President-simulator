@@ -616,6 +616,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return ProductionLawViewModel.canEnact(_state.value, law)
     }
 
+    fun parliamentSupportFor(lawId: String): Float {
+        val law = com.presidentsimulator.game.data.LawCatalog.byId(lawId) ?: return 0f
+        return com.presidentsimulator.game.data.ParliamentarySupport.score(_state.value, law)
+    }
+
+    fun campaignCooldownMonths(action: CampaignAction): Int =
+        demographicsEngine.campaignCooldownMonths(_state.value, action)
+
+    fun isElectionSeason(): Boolean =
+        demographicsEngine.isElectionSeason(_state.value)
+
     // ── Military & diplomacy actions ─────────────────────────────────────────
 
     fun declareWar(targetCountryId: String) {
@@ -770,7 +781,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun maybeTriggerEvent() {
         if (_currentActiveEvent.value != null) return
         if (random.nextFloat() >= EVENT_CHANCE_PER_TICK) return
-        _currentActiveEvent.value = EventRepository.randomEvent(random)
+        _currentActiveEvent.value = EventRepository.weightedEvent(_state.value, random)
     }
 
     // ── Economy actions ──────────────────────────────────────────────────────

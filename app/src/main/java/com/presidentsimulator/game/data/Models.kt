@@ -34,9 +34,15 @@ data class GameState(
     val dateLabel: String
         get() = "${monthName(month)} $year"
 
-    /** Trade treaties grant a passive export bonus. */
+    /** Trade treaties grant a passive export bonus (scaled by national perk). */
     val tradeExportBonus: Long
-        get() = diplomacy.rivals.count { it.hasTradeTreaty } * 1_500_000_000L
+        get() {
+            val base = diplomacy.rivals.count { it.hasTradeTreaty } * 1_500_000_000L
+            val perk = NationalPerkEffects.tradeIncomeMultiplier(
+                NationalPerkEffects.forNationId(playerNation.id),
+            )
+            return (base * perk).toLong()
+        }
 
     val netIncome: Long
         get() = economy.totalRevenue(vitals.population) +
@@ -51,9 +57,13 @@ data class GameState(
     /** Combat power including tech, religion, and UN embargo modifiers. */
     val effectiveCombatStrength: Double
         get() {
+            val perk = NationalPerkEffects.combatStrengthMultiplier(
+                NationalPerkEffects.forNationId(playerNation.id),
+            )
             var strength = military.combatStrength *
                 research.combinedEffects.militaryStrengthMultiplier *
-                society.stateReligion.militaryMultiplier
+                society.stateReligion.militaryMultiplier *
+                perk
             if (governance.nuclearEmbargoActive) {
                 strength *= 0.88
             }
@@ -826,4 +836,64 @@ object EventRepository {
 
     fun randomEvent(random: kotlin.random.Random = kotlin.random.Random.Default): GameEvent =
         eventPool.random(random)
+
+    fun weightedEvent(
+        state: GameState,
+        random: kotlin.random.Random = kotlin.random.Random.Default,
+    ): GameEvent {
+        val weights = eventPool.map { event ->
+            event to eventWeight(event, state)
+        }
+        val total = weights.sumOf { it.second.toDouble() }.toFloat().coerceAtLeast(1f)
+        var roll = random.nextFloat() * total
+        for ((event, weight) in weights) {
+            roll -= weight
+            if (roll <= 0f) return event
+        }
+        return eventPool.last()
+    }
+
+    private enum class EventTag {
+        SHORTAGE, WAR, DIPLOMACY, ECONOMY, DOMESTIC, ELECTION,
+    }
+
+    private fun tagsFor(eventId: String): Set<EventTag> = when {
+        eventId.contains("strike") || eventId.contains("shortage") ||
+            eventId.contains("drought") || eventId.contains("blackout") -> setOf(EventTag.SHORTAGE, EventTag.DOMESTIC)
+        eventId.contains("border") || eventId.contains("war") || eventId.contains("arms") ||
+            eventId.contains("mobiliz") || eventId.contains("coup") -> setOf(EventTag.WAR, EventTag.DIPLOMACY)
+        eventId.contains("grain") || eventId.contains("trade") || eventId.contains("market") ||
+            eventId.contains("sanction") -> setOf(EventTag.ECONOMY, EventTag.DIPLOMACY)
+        eventId.contains("election") || eventId.contains("scandal") || eventId.contains("protest") ->
+            setOf(EventTag.ELECTION, EventTag.DOMESTIC)
+        else -> setOf(EventTag.DOMESTIC)
+    }
+
+    private fun monthsUntilElection(state: GameState): Int {
+        val monthsLeft = (state.nextElectionYear - state.year) * 12 + (12 - state.month)
+        return monthsLeft.coerceAtLeast(0)
+    }
+
+    private fun eventWeight(event: GameEvent, state: GameState): Float {
+        val tags = tagsFor(event.id)
+        var weight = 1f
+
+        if (state.production.foodShortage && EventTag.SHORTAGE in tags) weight *= 4f
+        if (state.production.energyShortage && EventTag.SHORTAGE in tags) weight *= 3f
+
+        if (state.diplomacy.activeWar != null) {
+            if (EventTag.WAR in tags) weight *= 5f
+        } else if (EventTag.WAR in tags) {
+            weight *= 0.12f
+        }
+
+        if (monthsUntilElection(state) in 1..6 && EventTag.ELECTION in tags) weight *= 3f
+        if (state.netIncome < 0 && EventTag.ECONOMY in tags) weight *= 2.2f
+        if (state.internalSecurity.instabilityScore > 50f && EventTag.DOMESTIC in tags) weight *= 1.8f
+        if (state.diplomacy.rivals.any { it.relationshipScore < -40 } && EventTag.DIPLOMACY in tags) {
+            weight *= 1.5f
+        }
+
+        return weight
+    }
 }

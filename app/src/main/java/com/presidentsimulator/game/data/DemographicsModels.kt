@@ -12,6 +12,10 @@ data class DemographicsState(
     val military: Float = 55f,
     val academics: Float = 55f,
     val recentReasons: List<String> = emptyList(),
+    /** Months until each campaign action can be used again (action name → months left). */
+    val campaignCooldownMonths: Map<String, Int> = emptyMap(),
+    /** Opposition momentum during election season — drags blended approval. */
+    val oppositionMomentum: Float = 0f,
 ) {
     fun blendedApproval(): Float =
         (workingClass * SHARE_WORKING) +

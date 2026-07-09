@@ -1,5 +1,6 @@
 package com.presidentsimulator.game.viewmodel
 
+import com.presidentsimulator.game.data.NationalPerkEffects
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MarketResource
 import com.presidentsimulator.game.data.MarketState
@@ -44,9 +45,13 @@ class TradeMarketViewModel(
         }
 
         val tradeBalance = settlement.exportIncome - settlement.importSpend
+        val tradePerk = NationalPerkEffects.tradeIncomeMultiplier(
+            NationalPerkEffects.forNationId(next.playerNation.id),
+        )
+        val exportBonus = ((settlement.exportIncome * tradePerk) - settlement.exportIncome).toLong()
         return next.copy(
             vitals = next.vitals.copy(
-                budget = next.vitals.budget + tariffRevenue,
+                budget = next.vitals.budget + tariffRevenue + exportBonus,
                 approval = approval.coerceIn(0f, 100f),
             ),
             trade = next.trade.copy(

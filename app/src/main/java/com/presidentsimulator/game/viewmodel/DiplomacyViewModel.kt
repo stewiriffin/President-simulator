@@ -1,6 +1,7 @@
 package com.presidentsimulator.game.viewmodel
 
 import com.presidentsimulator.game.data.DeploymentStatus
+import com.presidentsimulator.game.data.NationalPerkEffects
 import com.presidentsimulator.game.data.DiplomacyState
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
@@ -66,7 +67,15 @@ class DiplomacyViewModel(
                 score = -100f
             }
 
-            rival.copy(relationshipScore = score.roundToInt().coerceIn(-100, 100))
+            val hostile = score <= -25f
+            val militaryGrowth = if (hostile) 1.8 else 0.6
+            val economicGrowth = if (rival.hasTradeTreaty) 0.004 else 0.002
+
+            rival.copy(
+                relationshipScore = score.roundToInt().coerceIn(-100, 100),
+                militaryStrength = (rival.militaryStrength + militaryGrowth).coerceAtMost(1_200.0),
+                economicPower = (rival.economicPower + economicGrowth).coerceAtMost(2.0),
+            )
         }
 
         val influenceRegen = if (state.diplomacy.activeWar == null) 2 else 1
@@ -409,7 +418,8 @@ class DiplomacyViewModel(
 
     fun recruitPersonnel(state: GameState, amount: Long): GameState {
         if (amount <= 0L) return state
-        val cost = amount * RECRUIT_COST_PER_SOLDIER
+        val perk = NationalPerkEffects.forNationId(state.playerNation.id)
+        val cost = (amount * RECRUIT_COST_PER_SOLDIER * NationalPerkEffects.recruitCostMultiplier(perk)).toLong()
         if (state.vitals.budget < cost) return state
         return state.copy(
             vitals = state.vitals.copy(budget = state.vitals.budget - cost),

@@ -19,6 +19,24 @@ class DemographicsCampaignViewModel {
         var military = state.demographics.military
         var academics = state.demographics.academics
 
+        val cooldowns = state.demographics.campaignCooldownMonths
+            .mapValues { (_, months) -> (months - 1).coerceAtLeast(0) }
+            .filterValues { it > 0 }
+
+        var opposition = state.demographics.oppositionMomentum
+        if (isElectionSeason(state)) {
+            opposition = (opposition + when {
+                state.vitals.approval < 45f -> 1.8f
+                state.vitals.approval < 55f -> 1.1f
+                else -> 0.4f
+            }).coerceAtMost(25f)
+            if (opposition > 8f) {
+                reasons += "Election season — opposition momentum is building"
+            }
+        } else {
+            opposition = (opposition * 0.85f).coerceAtLeast(0f)
+        }
+
         val tax = state.economy.taxRate
         working += (0.20f - tax) * 40f
         business += (0.28f - tax) * 55f
@@ -76,12 +94,15 @@ class DemographicsCampaignViewModel {
             mil = military,
             academic = academics,
             reasons = state.demographics.recentReasons + reasons,
+        ).copy(
+            campaignCooldownMonths = cooldowns,
+            oppositionMomentum = opposition,
         )
-        val blended = demo.blendedApproval()
+        val blended = (demo.blendedApproval() - opposition * 0.35f).coerceIn(0f, 100f)
 
         var next = state.copy(
             demographics = demo,
-            vitals = state.vitals.copy(approval = blended.coerceIn(0f, 100f)),
+            vitals = state.vitals.copy(approval = blended),
         )
         next = evaluateCampaignOutcomes(next)
         return next
@@ -105,7 +126,7 @@ class DemographicsCampaignViewModel {
                 gameOver = GameOverState(
                     isGameOver = true,
                     isVictory = true,
-                    reason = "Victory: A golden age — you guided Veltria to $VICTORY_YEAR with " +
+                    reason = "Victory: A golden age — you guided ${state.playerNation.name} to $VICTORY_YEAR with " +
                         "${state.vitals.approval.roundToInt()}% approval and lasting stability.",
                 ),
             )
@@ -123,7 +144,7 @@ class DemographicsCampaignViewModel {
                     isGameOver = true,
                     isVictory = true,
                     reason = "Victory: Diplomatic hegemony — $allies major partners and a formal " +
-                        "alliance network secured Veltria's global leadership.",
+                        "alliance network secured ${state.playerNation.name}'s global leadership.",
                 ),
             )
         }
@@ -133,42 +154,67 @@ class DemographicsCampaignViewModel {
 
     fun runCampaignAction(state: GameState, action: CampaignAction): GameState {
         if (state.gameOver.isGameOver) return state
-        if (state.vitals.budget < action.cost) return state
+        val cooldown = state.demographics.campaignCooldownMonths[action.name] ?: 0
+        if (cooldown > 0) return state
+
+        val electionPremium = if (isElectionSeason(state)) 1.25f else 1f
+        val totalCost = (action.cost * electionPremium).toLong()
+        if (state.vitals.budget < totalCost) return state
+
+        val boostMultiplier = if (isElectionSeason(state)) 1.2f else 1f
+        val effectiveBoost = action.boost * boostMultiplier
 
         val demo = state.demographics
         val boosted = when (action) {
             CampaignAction.WORKER_RALLY -> demo.withClamp(
-                working = demo.workingClass + action.boost,
+                working = demo.workingClass + effectiveBoost,
                 reasons = demo.recentReasons + "Worker rally boosted working-class support",
             )
             CampaignAction.BUSINESS_ROUNDTABLE -> demo.withClamp(
-                business = demo.businessElite + action.boost,
+                business = demo.businessElite + effectiveBoost,
                 reasons = demo.recentReasons + "Business roundtable swayed elites",
             )
             CampaignAction.TROOP_VISIT -> demo.withClamp(
-                mil = demo.military + action.boost,
+                mil = demo.military + effectiveBoost,
                 reasons = demo.recentReasons + "Troop visit lifted military morale",
             )
             CampaignAction.CAMPUS_TOUR -> demo.withClamp(
-                academic = demo.academics + action.boost,
+                academic = demo.academics + effectiveBoost,
                 reasons = demo.recentReasons + "Campus tour won academic backing",
             )
             CampaignAction.NATIONAL_ADDRESS -> demo.withClamp(
-                working = demo.workingClass + action.boost,
-                business = demo.businessElite + action.boost,
-                mil = demo.military + action.boost * 0.6f,
-                academic = demo.academics + action.boost * 0.8f,
+                working = demo.workingClass + effectiveBoost,
+                business = demo.businessElite + effectiveBoost,
+                mil = demo.military + effectiveBoost * 0.6f,
+                academic = demo.academics + effectiveBoost * 0.8f,
                 reasons = demo.recentReasons + "National address lifted every bloc",
             )
         }
-        val blended = boosted.blendedApproval()
+        val oppositionDrop = if (isElectionSeason(state)) 2.5f else 0f
+        val updatedDemo = boosted.copy(
+            campaignCooldownMonths = boosted.campaignCooldownMonths + (action.name to action.cooldownMonths),
+            oppositionMomentum = (boosted.oppositionMomentum - oppositionDrop).coerceAtLeast(0f),
+        )
+        val blended = (updatedDemo.blendedApproval() - updatedDemo.oppositionMomentum * 0.35f)
+            .coerceIn(0f, 100f)
         return state.copy(
             vitals = state.vitals.copy(
-                budget = state.vitals.budget - action.cost,
-                approval = blended.coerceIn(0f, 100f),
+                budget = state.vitals.budget - totalCost,
+                approval = blended,
             ),
-            demographics = boosted,
+            demographics = updatedDemo,
         )
+    }
+
+    fun campaignCooldownMonths(state: GameState, action: CampaignAction): Int =
+        state.demographics.campaignCooldownMonths[action.name] ?: 0
+
+    fun isElectionSeason(state: GameState): Boolean =
+        monthsUntilElection(state) in 1..ELECTION_SEASON_MONTHS
+
+    fun monthsUntilElection(state: GameState): Int {
+        val monthsLeft = (state.nextElectionYear - state.year) * 12 + (12 - state.month)
+        return monthsLeft.coerceAtLeast(0)
     }
 
     private fun resolveElection(state: GameState): GameState {
@@ -182,7 +228,10 @@ class DemographicsCampaignViewModel {
             state.demographics.academics,
         ).minOrNull() ?: approval
 
-        val winSeat = approval >= ELECTION_APPROVAL &&
+        val oppositionPenalty = state.demographics.oppositionMomentum * 0.4f
+        val effectiveApproval = approval - oppositionPenalty
+
+        val winSeat = effectiveApproval >= ELECTION_APPROVAL &&
             economyOk &&
             stabilityOk &&
             cohortFloor >= ELECTION_COHORT_FLOOR
@@ -191,6 +240,7 @@ class DemographicsCampaignViewModel {
             state.copy(
                 nextElectionYear = state.year + ELECTION_TERM_YEARS,
                 demographics = state.demographics.copy(
+                    oppositionMomentum = 0f,
                     recentReasons = state.demographics.recentReasons +
                         "Re-elected with ${approval.roundToInt()}% national mandate",
                 ),
@@ -211,6 +261,7 @@ class DemographicsCampaignViewModel {
         const val ELECTION_TERM_YEARS = 4
         const val ELECTION_APPROVAL = 48f
         const val ELECTION_COHORT_FLOOR = 35f
+        const val ELECTION_SEASON_MONTHS = 6
         const val VICTORY_YEAR = 2046
         const val VICTORY_APPROVAL = 70f
         const val VICTORY_MAX_INSTABILITY = 35f
@@ -223,10 +274,11 @@ enum class CampaignAction(
     val displayName: String,
     val cost: Long,
     val boost: Float,
+    val cooldownMonths: Int = 3,
 ) {
     WORKER_RALLY("Worker Rally", 2_500_000_000L, 5f),
     BUSINESS_ROUNDTABLE("Business Roundtable", 3_000_000_000L, 6f),
     TROOP_VISIT("Troop Visit", 2_000_000_000L, 5.5f),
     CAMPUS_TOUR("Campus Tour", 2_200_000_000L, 5f),
-    NATIONAL_ADDRESS("National Address", 5_000_000_000L, 3.5f),
+    NATIONAL_ADDRESS("National Address", 5_000_000_000L, 3.5f, cooldownMonths = 6),
 }

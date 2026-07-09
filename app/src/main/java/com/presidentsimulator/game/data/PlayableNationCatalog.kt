@@ -26,6 +26,7 @@ object PlayableNationCatalog {
             name = name,
             flagEmoji = flagEmoji,
             governmentLabel = governmentLabel,
+            nationalPerk = NationalPerkEffects.forNationId(id),
         )
 
         fun toRivalNation(playerCountryId: String): RivalNation {

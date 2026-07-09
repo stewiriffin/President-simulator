@@ -59,6 +59,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
+import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
@@ -66,6 +67,7 @@ import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.viewmodel.AdvancementViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
+import com.presidentsimulator.game.data.ParliamentarySupport
 import com.presidentsimulator.game.viewmodel.ProductionLawViewModel
 import com.presidentsimulator.game.viewmodel.toBudgetString
 import kotlin.math.roundToInt
@@ -142,10 +144,12 @@ fun LawsScreen(
                 items(laws, key = { it.id }) { law ->
                     val isActive = state.legal.isActive(law.id)
                     val pending = state.legal.pendingLaws.find { it.lawId == law.id }
+                    val parliamentSupport = ParliamentarySupport.score(state, law)
                     PolicyLawRow(
                         law = law,
                         category = selected.category ?: LawCategory.SOCIAL,
                         isActive = isActive,
+                        parliamentSupport = parliamentSupport,
                         pendingLabel = pending?.let {
                             if (it.enabling) "PENDING ENACT · ${it.ticksRemaining} mo"
                             else "PENDING REPEAL · ${it.ticksRemaining} mo"
@@ -356,6 +360,7 @@ private fun PolicyLawRow(
     law: Law,
     category: LawCategory,
     isActive: Boolean,
+    parliamentSupport: Float,
     pendingLabel: String?,
     effectSummary: String,
     enabled: Boolean,
@@ -397,6 +402,12 @@ private fun PolicyLawRow(
                     Text(pendingLabel, fontSize = 11.sp, color = NssAccent, modifier = Modifier.padding(top = 4.dp))
                 }
                 Text(effectSummary, fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+                Text(
+                    text = "Parliament support ${parliamentSupport.roundToInt()}% · need ${law.approvalThreshold.roundToInt()}%",
+                    fontSize = 10.sp,
+                    color = if (parliamentSupport >= law.approvalThreshold) NssEmerald else NssAccent,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
                 Text("Upkeep ${law.upkeepCost.toBudgetString()}/mo", fontSize = 10.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 2.dp))
             }
             Switch(
@@ -420,8 +431,9 @@ private fun LawToggleConfirmationDialog(
         buildString {
             append("Activation cost: ${law.activationCost.toBudgetString()}\n")
             append("Monthly upkeep: ${law.upkeepCost.toBudgetString()}\n")
-            append("Parliament approval required: ${law.approvalThreshold.roundToInt()}%\n\n")
-            append("If national approval is below that threshold, the bill enters a 3-month parliament queue.\n\n")
+            append("Parliament support required: ${law.approvalThreshold.roundToInt()}%\n\n")
+            append("Support is weighted by the law's category (workers, business, military, academics). ")
+            append("Weak bloc backing queues the bill for 3–7 months; stalled bills extend until support improves.\n\n")
             append("Ongoing effects: ${buildLawEffectSummary(law)}")
         }
     } else {
