@@ -1,12 +1,12 @@
 package com.presidentsimulator.game.ui.components
 
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,15 +20,13 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.HowToVote
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shield
@@ -42,126 +40,156 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.data.GameState
-import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssAccent
+import com.presidentsimulator.game.ui.theme.Dimens
+import com.presidentsimulator.game.ui.theme.NssHudMetricsBar
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
-import com.presidentsimulator.game.viewmodel.toApprovalString
+import com.presidentsimulator.game.viewmodel.TimeSpeedMode
 import kotlin.math.roundToInt
 
 /**
- * Gamified v3 top HUD — compact vitals, alert pill, pulsing End Turn CTA.
+ * Zip-reference HUD — brand row + inset metrics strip, icon-only time controls.
  */
 @Composable
 fun GlobalHud(
     state: GameState,
-    isAutoTicking: Boolean,
-    nextTurnEnabled: Boolean,
+    timeSpeedMode: TimeSpeedMode,
     timeSpeedEnabled: Boolean,
     alertCount: Int,
-    onNextTurn: () -> Unit,
-    onToggleTimeSpeed: () -> Unit,
+    onTimeSpeedModeSelected: (TimeSpeedMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val layout = rememberNssLayoutSpec()
     val stability = (100f - state.internalSecurity.instabilityScore).coerceIn(0f, 100f)
     val milPower = state.effectiveCombatStrength.roundToInt()
     val treasuryWarn = state.netIncome < 0
     val stabilityWarn = stability < 60f
-
     val monthsToElection = monthsUntilElection(state)
     val electionWarn = monthsToElection in 0..12
+    val quarter = ((state.month - 1) / 3) + 1
 
-    val vitals = listOf(
-        HudChip(Icons.Default.AttachMoney, formatCompactMoney(state.vitals.budget), treasuryWarn),
-        HudChip(Icons.Default.Shield, "${stability.roundToInt()}%", stabilityWarn),
-        HudChip(Icons.Default.SportsMartialArts, formatCompactMil(milPower), warn = false),
-        HudChip(Icons.Default.Groups, state.vitals.approval.toApprovalString(), state.vitals.approval < 50f),
-        HudChip(Icons.Default.HowToVote, electionCountdownLabel(monthsToElection), electionWarn),
-    )
+    val pulseTransition = rememberInfiniteTransition(label = "alertPulse")
+    val hudShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
 
-    val pulseTransition = rememberInfiniteTransition(label = "endTurnPulse")
-    val endTurnScale by pulseTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(tween(1250, easing = LinearEasing), RepeatMode.Reverse),
-        label = "endTurnScale",
-    )
-
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
+            .clip(hudShape)
             .background(NssPrimary)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-            )
-            .height(Dimens.HudHeight)
-            .padding(horizontal = Dimens.SpacingSmall),
-        verticalAlignment = Alignment.CenterVertically,
+            ),
     ) {
         Row(
-            modifier = Modifier.padding(start = Dimens.SpacingSmall, end = Dimens.SpacingSmall),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .padding(horizontal = Dimens.SpacingMedium),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .background(NssAccent),
-                contentAlignment = Alignment.Center,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall),
             ) {
-                Icon(Icons.Default.AccountBalance, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(16.dp))
-            }
-            Column {
-                Text("VELTRIA", color = NssOnPhoto, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 1.sp)
-                Text(
-                    text = "${state.year} · Q${((state.month - 1) / 3) + 1}",
-                    fontSize = 9.sp,
-                    color = NssOnPhoto.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            vitals.forEach { chip ->
-                Row(
+                Box(
                     modifier = Modifier
+                        .size(32.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (chip.warn) Color(0x33F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(NssAccent, Color(0xFFD97706)),
+                            ),
+                        )
+                        .border(1.dp, NssOnPhoto.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        chip.icon,
+                        Icons.Default.AccountBalance,
                         contentDescription = null,
-                        tint = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
-                        modifier = Modifier.size(12.dp),
+                        tint = NssOnPhoto,
+                        modifier = Modifier.size(16.dp),
                     )
+                }
+                Column {
                     Text(
-                        text = chip.value,
-                        color = if (chip.warn) Color(0xFFFCD34D) else NssOnPhoto,
-                        fontSize = 11.sp,
+                        text = state.playerNation.name.uppercase(),
+                        color = NssOnPhoto,
+                        fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Black,
+                        fontSize = if (layout.isNarrowWidth) 12.sp else 14.sp,
+                        letterSpacing = 1.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Q$quarter ${state.year}",
+                            fontSize = 10.sp,
+                            color = NssOnPhoto.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        )
+                        if (electionWarn) {
+                            Text(
+                                text = if (monthsToElection <= 0) "ELECTION NOW" else "ELECTION IN ${electionCountdownLabel(monthsToElection)}",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFFFCD34D),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0x33F59E0B))
+                                    .border(1.dp, Color(0x66F59E0B), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
                 }
+            }
+            TimeSpeedControl(
+                mode = timeSpeedMode,
+                enabled = timeSpeedEnabled,
+                onModeSelected = onTimeSpeedModeSelected,
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Dimens.SpacingSmall, end = Dimens.SpacingSmall, bottom = Dimens.SpacingSmall)
+                .clip(RoundedCornerShape(12.dp))
+                .background(NssHudMetricsBar)
+                .border(1.dp, NssOnPhoto.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                .padding(horizontal = Dimens.SpacingMedium, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            HudMetric(Icons.Default.AttachMoney, formatCompactMoney(state.vitals.budget), treasuryWarn, compact = layout.isNarrowWidth)
+            HudMetric(Icons.Default.Shield, "${stability.roundToInt()}%", stabilityWarn, compact = layout.isNarrowWidth)
+            if (!layout.isNarrowWidth) {
+                HudMetric(Icons.Default.SportsMartialArts, formatCompactMil(milPower), warn = false, compact = false)
             }
 
             if (alertCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(NssOnPhoto.copy(alpha = 0.1f)),
+                )
                 val alertPulse by pulseTransition.animateFloat(
                     initialValue = 1f,
                     targetValue = 1.35f,
@@ -172,6 +200,7 @@ fun GlobalHud(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(0x33EF4444))
+                        .border(1.dp, Color(0x4DEF4444), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -184,56 +213,83 @@ fun GlobalHud(
                             .background(Color(0xFFF87171)),
                     )
                     Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(12.dp))
-                    Text(text = alertCount.toString(), color = Color(0xFFFCA5A5), fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = "$alertCount ALERT${if (alertCount == 1) "" else "S"}",
+                        color = Color(0xFFFCA5A5),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                    )
                 }
             }
         }
+    }
+}
 
-        Row(
-            modifier = Modifier.padding(end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+@Composable
+private fun HudMetric(icon: ImageVector, value: String, warn: Boolean, compact: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (warn) Color(0x33F59E0B) else NssOnPhoto.copy(alpha = 0.1f))
+                .padding(4.dp),
         ) {
-            Row(
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (warn) Color(0xFFFCD34D) else NssOnPhoto.copy(alpha = 0.7f),
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        Text(
+            text = value,
+            color = if (warn) Color(0xFFFCD34D) else NssOnPhoto,
+            fontSize = if (compact) 10.sp else 12.sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun TimeSpeedControl(
+    mode: TimeSpeedMode,
+    enabled: Boolean,
+    onModeSelected: (TimeSpeedMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(NssHudMetricsBar)
+            .border(1.dp, NssOnPhoto.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TimeSpeedMode.entries.forEach { speed ->
+            val selected = mode == speed
+            val icon = when (speed) {
+                TimeSpeedMode.PAUSED -> Icons.Default.Pause
+                TimeSpeedMode.NORMAL -> Icons.Default.PlayArrow
+                TimeSpeedMode.FAST -> Icons.Default.FastForward
+            }
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (timeSpeedEnabled) {
-                            if (isAutoTicking) NssAccent.copy(alpha = 0.55f) else NssOnPhoto.copy(alpha = 0.12f)
-                        } else {
-                            NssOnPhoto.copy(alpha = 0.06f)
-                        },
-                    )
-                    .clickable(enabled = timeSpeedEnabled, onClick = onToggleTimeSpeed)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) NssAccent else Color.Transparent)
+                    .clickable(enabled = enabled) { onModeSelected(speed) }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (isAutoTicking) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isAutoTicking) "Pause auto-tick" else "Start auto-tick",
-                    tint = NssOnPhoto,
-                    modifier = Modifier.size(14.dp),
+                    imageVector = icon,
+                    contentDescription = speed.label,
+                    tint = if (selected) NssOnPhoto else NssOnPhoto.copy(alpha = 0.4f),
+                    modifier = Modifier.size(16.dp),
                 )
-                Text(
-                    text = if (isAutoTicking) "Auto" else "1x",
-                    color = NssOnPhoto,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .scale(if (nextTurnEnabled) endTurnScale else 1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (nextTurnEnabled) NssAccent else NssAccent.copy(alpha = 0.4f))
-                    .clickable(enabled = nextTurnEnabled, onClick = onNextTurn)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NssOnPhoto, modifier = Modifier.size(14.dp))
-                Text("End Turn", color = NssOnPhoto, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -246,14 +302,12 @@ fun monthsUntilElection(state: GameState): Int {
 }
 
 fun electionCountdownLabel(months: Int): String = when {
-    months <= 0 -> "Vote"
-    months < 12 -> "${months}m"
-    else -> "${months / 12}y"
+    months <= 0 -> "NOW"
+    months < 12 -> "${months}M"
+    else -> "${months / 12}Y"
 }
 
-private data class HudChip(val icon: ImageVector, val value: String, val warn: Boolean)
-
-private fun formatCompactMil(value: Int): String = when {
+fun formatCompactMil(value: Int): String = when {
     value >= 1_000 -> "${"%.1f".format(value / 1000f)}K"
     else -> value.toString()
 }

@@ -5,12 +5,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +57,7 @@ import com.presidentsimulator.game.ui.screens.AnalyticsScreen
 import com.presidentsimulator.game.ui.screens.ApprovalDemographicsScreen
 import com.presidentsimulator.game.ui.screens.DiplomacyScreen
 import com.presidentsimulator.game.ui.screens.EconomyScreen
+import com.presidentsimulator.game.ui.screens.CountrySelectScreen
 import com.presidentsimulator.game.ui.screens.LaunchScreen
 import com.presidentsimulator.game.ui.screens.LawsScreen
 import com.presidentsimulator.game.ui.screens.MainDashboardScreen
@@ -66,7 +73,7 @@ fun GameNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
     val state by viewModel.state.collectAsState()
-    val isAutoTicking by viewModel.isAutoTicking.collectAsState()
+    val timeSpeedMode by viewModel.timeSpeedMode.collectAsState()
     val activeEvent by viewModel.currentActiveEvent.collectAsState()
     val turnSummary by viewModel.turnSummary.collectAsState()
     val missionResults by viewModel.missionResults.collectAsState()
@@ -75,14 +82,17 @@ fun GameNavigation(
     val hasSave by viewModel.hasSave.collectAsState()
     val gameOver = state.gameOver.isGameOver
     val isVictory = state.gameOver.isVictory
-    val timeBlocked = activeEvent != null || gameOver ||
-        turnSummary != null || missionResults.isNotEmpty() || warOutcome != null
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
     val context = LocalContext.current
     val audio = remember(context) { GameAudioManager.getInstance(context) }
+    var showCountrySelect by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showLaunch) {
+        if (showLaunch) showCountrySelect = false
+    }
 
     val navigate: (GameDestination) -> Unit = { destination ->
         audio.playClick()
@@ -94,22 +104,37 @@ fun GameNavigation(
     }
 
     if (showLaunch) {
-        LaunchScreen(
-            hasSave = hasSave,
-            onContinueGame = {
-                audio.playClick()
-                viewModel.continueGame()
-            },
-            onNewGame = {
-                audio.playClick()
-                viewModel.startNewGame()
-            },
-            slots = viewModel.listSaveSlots(),
-            onLoadSlot = { slot ->
-                audio.playClick()
-                viewModel.loadFromSlot(slot)
-            },
-        )
+        if (showCountrySelect) {
+            CountrySelectScreen(
+                nations = viewModel.playableNations(),
+                onBack = {
+                    audio.playClick()
+                    showCountrySelect = false
+                },
+                onSelectCountry = { countryId ->
+                    audio.playClick()
+                    viewModel.startNewGame(countryId)
+                    showCountrySelect = false
+                },
+            )
+        } else {
+            LaunchScreen(
+                hasSave = hasSave,
+                onContinueGame = {
+                    audio.playClick()
+                    viewModel.continueGame()
+                },
+                onNewGame = {
+                    audio.playClick()
+                    showCountrySelect = true
+                },
+                slots = viewModel.listSaveSlots(),
+                onLoadSlot = { slot ->
+                    audio.playClick()
+                    viewModel.loadFromSlot(slot)
+                },
+            )
+        }
         return
     }
 
@@ -179,17 +204,12 @@ fun GameNavigation(
     ) {
         GlobalHud(
             state = state,
-            isAutoTicking = isAutoTicking,
-            nextTurnEnabled = !timeBlocked,
+            timeSpeedMode = timeSpeedMode,
             timeSpeedEnabled = !gameOver,
             alertCount = collectAlertCount(state),
-            onNextTurn = {
+            onTimeSpeedModeSelected = { mode ->
                 audio.playClick()
-                viewModel.advanceTimeTick()
-            },
-            onToggleTimeSpeed = {
-                audio.playClick()
-                viewModel.toggleAutoTick()
+                viewModel.setTimeSpeedMode(mode)
             },
         )
 
@@ -267,6 +287,7 @@ private fun CampaignEndDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .clip(NssCardShape)
                 .background(NssBackground)
                 .padding(20.dp),

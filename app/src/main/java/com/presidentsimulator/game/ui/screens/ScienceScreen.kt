@@ -78,7 +78,12 @@ fun ScienceScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(Dimens.ContentPadding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = Dimens.ContentPadding,
+                end = Dimens.ContentPadding,
+                top = Dimens.ContentPadding,
+                bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {

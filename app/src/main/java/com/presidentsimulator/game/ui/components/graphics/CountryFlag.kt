@@ -117,10 +117,14 @@ private fun fallbackColorForCode(countryCode: String): Color {
  * Drop real PNGs as `flag_<code>` under `res/drawable` when assets are ready.
  */
 fun rivalIdToCountryCode(rivalId: String): String = when (rivalId.lowercase()) {
+    "veltra" -> "VT"
     "northland" -> "NL"
     "eastmark" -> "EM"
     "southreach" -> "SR"
     "westoria" -> "WO"
-    "player", "your_nation" -> "US"
+    "aurumcoast" -> "AC"
+    "kryos" -> "KR"
+    "verdehaan" -> "VH"
+    "player", "your_nation" -> "VT"
     else -> rivalId.take(2).uppercase().ifBlank { "XX" }
 }

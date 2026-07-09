@@ -1,6 +1,7 @@
 package com.presidentsimulator.game.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
@@ -86,6 +89,7 @@ fun MinistryBottomNav(
         modifier = modifier
             .fillMaxWidth()
             .background(NssPrimary.copy(alpha = 0.95f))
+            .border(1.dp, NssOnPhoto.copy(alpha = 0.1f), RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp))
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
@@ -105,7 +109,20 @@ fun MinistryBottomNav(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .background(NssOnPhoto.copy(alpha = 0.1f)),
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NssOnPhoto.copy(alpha = 0.12f)),
+                    )
+                }
+                if (selected) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = (-2).dp)
+                            .width(32.dp)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                            .background(NssAccent),
                     )
                 }
                 Column(

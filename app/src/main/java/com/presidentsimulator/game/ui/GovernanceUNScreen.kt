@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.presidentsimulator.game.data.Alliance
 import com.presidentsimulator.game.data.GameState
-import com.presidentsimulator.game.data.PLAYER_COUNTRY_ID
 import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.UNResolution
 import com.presidentsimulator.game.ui.components.NssBadge
@@ -42,6 +41,7 @@ import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
 import com.presidentsimulator.game.ui.components.NssTabBar
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -131,6 +131,7 @@ private fun AssemblyPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .nssMinistryScrollPadding()
             .padding(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -393,6 +394,7 @@ private fun CoalitionsPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .nssMinistryScrollPadding()
             .padding(Dimens.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -435,7 +437,7 @@ private fun CoalitionsPanel(
                     state = state,
                     alliance = alliance,
                     onDissolve = {
-                        if (alliance.leaderCountryId == PLAYER_COUNTRY_ID) {
+                        if (state.playerNation.matchesCountryId(alliance.leaderCountryId)) {
                             viewModel.dissolveAlliance(alliance.allianceId)
                         }
                     },
@@ -471,14 +473,14 @@ private fun AllianceCard(
         Text("Members", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NssPrimary)
         alliance.memberCountryIds.forEach { memberId ->
             val rival = state.diplomacy.rivalById(memberId)
-            val label = if (memberId == PLAYER_COUNTRY_ID) {
-                "🏛 Your Nation"
+            val label = if (state.playerNation.matchesCountryId(memberId)) {
+                "${state.playerNation.flagEmoji} ${state.playerNation.name}"
             } else {
                 "${rival?.flagEmoji.orEmpty()} ${rival?.name ?: memberId}"
             }
             Text(text = "• $label", fontSize = 12.sp, color = NssForeground)
         }
-        if (alliance.leaderCountryId == PLAYER_COUNTRY_ID) {
+        if (state.playerNation.matchesCountryId(alliance.leaderCountryId)) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Dissolve Coalition",

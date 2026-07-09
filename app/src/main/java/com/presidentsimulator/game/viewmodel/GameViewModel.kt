@@ -25,6 +25,7 @@ import com.presidentsimulator.game.data.TurnSummary
 import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.data.CovertMission
 import com.presidentsimulator.game.data.MissionStatus
+import com.presidentsimulator.game.data.PlayableNationCatalog
 import com.presidentsimulator.game.data.TechCatalog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,8 +50,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentActiveEvent = MutableStateFlow<GameEvent?>(null)
     val currentActiveEvent: StateFlow<GameEvent?> = _currentActiveEvent.asStateFlow()
 
-    private val _isAutoTicking = MutableStateFlow(false)
-    val isAutoTicking: StateFlow<Boolean> = _isAutoTicking.asStateFlow()
+    private val _timeSpeedMode = MutableStateFlow(TimeSpeedMode.PAUSED)
+    val timeSpeedMode: StateFlow<TimeSpeedMode> = _timeSpeedMode.asStateFlow()
 
     private val _saveLoadFeedback = MutableStateFlow(SaveLoadFeedback())
     val saveLoadFeedback: StateFlow<SaveLoadFeedback> = _saveLoadFeedback.asStateFlow()
@@ -91,8 +92,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         _hasSave.value = hasAutomatedSave()
-        // If no save exists skip the launch screen straight to a fresh game.
-        if (!_hasSave.value) _showLaunchScreen.value = false
     }
 
     // ── Time engine ──────────────────────────────────────────────────────────
@@ -172,7 +171,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val after = _state.value
         diplomacyEngine.consumeLastResolvedWar()?.let { outcome ->
             _warOutcome.value = outcome
-            stopAutoTick()
+            pauseTimeAdvance()
         }
 
         // Build turn summary before auto-save so deltas can be computed.
@@ -199,7 +198,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         if (after.gameOver.isGameOver) {
-            stopAutoTick()
+            pauseTimeAdvance()
         } else {
             val newlyResolved = after.espionage.activeMissions.filter { mission ->
                 val prior = beforeMissions[mission.id]
@@ -209,14 +208,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             if (newlyResolved.isNotEmpty()) {
                 _missionResults.value = _missionResults.value + newlyResolved
-                stopAutoTick()
+                pauseTimeAdvance()
             }
 
             // Auto-save after every tick.
             saveGameProgress()
             maybeTriggerEvent()
             if (_currentActiveEvent.value != null) {
-                stopAutoTick()
+                pauseTimeAdvance()
             }
         }
     }
@@ -469,6 +468,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             _currentActiveEvent.value = null
             _turnSummary.value = null
             _missionResults.value = emptyList()
+            pauseTimeAdvance()
             _showLaunchScreen.value = false
             _hasSave.value = true
             _saveLoadFeedback.value = analyticsEngine.feedbackForLoad(jsonString)
@@ -569,17 +569,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startNewGame() {
-        _state.value = GameState.initial()
+    fun playableNations(): List<PlayableNationCatalog.NationDefinition> =
+        PlayableNationCatalog.all()
+
+    fun startNewGame(countryId: String = "veltra") {
+        _state.value = GameState.initial(countryId)
         _currentActiveEvent.value = null
         _turnSummary.value = null
         _missionResults.value = emptyList()
+        pauseTimeAdvance()
         _showLaunchScreen.value = false
         saveGameProgress()
     }
 
     fun returnToLaunch() {
-        stopAutoTick()
+        pauseTimeAdvance()
         _currentActiveEvent.value = null
         _turnSummary.value = null
         _missionResults.value = emptyList()
@@ -721,13 +725,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun armisticeCost(): Long = DiplomacyViewModel.armisticeCost(_state.value)
 
-    fun toggleAutoTick() {
-        if (_isAutoTicking.value) stopAutoTick() else startAutoTick()
+    fun setTimeSpeedMode(mode: TimeSpeedMode) {
+        if (_state.value.gameOver.isGameOver && mode != TimeSpeedMode.PAUSED) return
+        _timeSpeedMode.value = mode
+        syncTimeTickJob()
     }
 
-    fun startAutoTick() {
-        if (autoTickJob?.isActive == true) return
-        _isAutoTicking.value = true
+    private fun syncTimeTickJob() {
+        autoTickJob?.cancel()
+        autoTickJob = null
+
+        val interval = _timeSpeedMode.value.intervalMs ?: return
         autoTickJob = viewModelScope.launch {
             while (isActive) {
                 val blocked = _currentActiveEvent.value != null ||
@@ -738,15 +746,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (!blocked) {
                     advanceTimeTick()
                 }
-                delay(TICK_INTERVAL_MS)
+                delay(interval)
             }
         }
     }
 
-    fun stopAutoTick() {
+    private fun pauseTimeAdvance() {
+        _timeSpeedMode.value = TimeSpeedMode.PAUSED
         autoTickJob?.cancel()
         autoTickJob = null
-        _isAutoTicking.value = false
     }
 
     // ── Crisis engine ────────────────────────────────────────────────────────
@@ -879,7 +887,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        stopAutoTick()
+        pauseTimeAdvance()
         super.onCleared()
     }
 
@@ -887,7 +895,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         const val MIN_TAX_RATE = 0.00f
         const val MAX_TAX_RATE = 0.50f
         const val EVENT_CHANCE_PER_TICK = 0.15f
-        const val TICK_INTERVAL_MS = 1_000L
     }
 }
 

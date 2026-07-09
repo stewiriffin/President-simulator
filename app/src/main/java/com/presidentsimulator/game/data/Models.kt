@@ -28,6 +28,8 @@ data class GameState(
     val demographics: DemographicsState = DemographicsState(),
     /** Year of the next scheduled presidential election. */
     val nextElectionYear: Int = 2030,
+    /** Nation the player leads — chosen at new game. */
+    val playerNation: PlayerNation = PlayerNation(),
 ) {
     val dateLabel: String
         get() = "${monthName(month)} $year"
@@ -68,60 +70,8 @@ data class GameState(
             society.stateReligion.productionMultiplier
 
     companion object {
-        fun initial(): GameState = GameState(
-            month = 1,
-            year = 2026,
-            vitals = VitalsState(
-                budget = 50_000_000_000L,
-                approval = 55f,
-                population = 50_000_000L,
-            ),
-            economy = EconomyState(
-                taxRate = 0.22f,
-                exports = 8_000_000_000L,
-                imports = 6_000_000_000L,
-                factories = 25,
-                farms = 30,
-                housing = 40,
-            ),
-            military = MilitaryState(
-                personnel = 450_000L,
-                upkeepPerUnit = 8_000L,
-                tanks = 800,
-                jets = 120,
-                deployment = DeploymentStatus.DEFENSIVE,
-                defcon = 4,
-            ),
-            diplomacy = DiplomacyState(),
-            production = ProductionState(
-                energy = 2_500L,
-                food = 6_000L,
-                materials = 2_000L,
-                goods = 1_000L,
-                powerPlants = 22,
-                mines = 18,
-            ),
-            legal = LegalState(
-                ideology = Ideology.DEMOCRACY,
-                activeLawIds = emptyList(),
-            ),
-            analytics = AnalyticsState(),
-            internalSecurity = InternalSecurityState(),
-            espionage = EspionageState(),
-            gameOver = GameOverState(),
-            research = ResearchState(),
-            society = SocietyState(),
-            trade = TradeState(),
-            market = MarketState(),
-            governance = GlobalGovernanceState(),
-            demographics = DemographicsState(
-                workingClass = 55f,
-                businessElite = 58f,
-                military = 52f,
-                academics = 54f,
-            ),
-            nextElectionYear = 2030,
-        )
+        fun initial(countryId: String = "veltra"): GameState =
+            PlayableNationCatalog.initialState(countryId)
 
         fun monthName(month: Int): String = MONTH_NAMES.getOrElse(month - 1) { "?" }
 

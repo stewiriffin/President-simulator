@@ -6,10 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.ui.navigation.GameNavigation
+import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.PresidentSimulatorTheme
 import com.presidentsimulator.game.viewmodel.GameViewModel
 
@@ -23,7 +25,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PresidentSimulatorTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(NssBackground),
+                    color = NssBackground,
+                ) {
                     GameNavigation(viewModel = gameViewModel)
                 }
             }

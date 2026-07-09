@@ -39,6 +39,8 @@ import com.presidentsimulator.game.ui.components.NssCard
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
 import com.presidentsimulator.game.ui.components.NssNationCard
 import com.presidentsimulator.game.ui.components.NssNationColors
 import com.presidentsimulator.game.ui.components.NssProgressBar
@@ -75,6 +77,7 @@ fun DiplomacyScreen(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val layout = rememberNssLayoutSpec()
     var selectedTab by remember { mutableStateOf("RELATIONS") }
     var selectedRivalId by remember { mutableStateOf<String?>(null) }
     val tabs = listOf("RELATIONS", "TREATIES", "NEGOTIATIONS")
@@ -116,16 +119,17 @@ fun DiplomacyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .nssMinistryScrollPadding()
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (selectedTab) {
                 "RELATIONS" -> {
                     RelationsLegend()
-                    state.diplomacy.rivals.chunked(2).forEachIndexed { rowIndex, row ->
+                    state.diplomacy.rivals.chunked(layout.gridColumns).forEachIndexed { rowIndex, row ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEachIndexed { colIndex, rival ->
-                                val cardIndex = rowIndex * 2 + colIndex
+                                val cardIndex = rowIndex * layout.gridColumns + colIndex
                                 NssNationCard(
                                     nationName = rival.name,
                                     flagEmoji = rivalFlagEmoji(rival),

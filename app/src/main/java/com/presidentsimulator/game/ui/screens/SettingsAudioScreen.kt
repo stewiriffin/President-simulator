@@ -40,6 +40,7 @@ import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
 import com.presidentsimulator.game.ui.theme.NssAccent
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -92,6 +93,7 @@ fun SettingsAudioScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .nssMinistryScrollPadding()
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

@@ -132,7 +132,12 @@ private fun InternalSecurityView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Dimens.ContentPadding),
+        contentPadding = PaddingValues(
+            start = Dimens.ContentPadding,
+            end = Dimens.ContentPadding,
+            top = Dimens.ContentPadding,
+            bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -350,7 +355,12 @@ private fun ForeignIntelligenceView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Dimens.ContentPadding),
+        contentPadding = PaddingValues(
+            start = Dimens.ContentPadding,
+            end = Dimens.ContentPadding,
+            top = Dimens.ContentPadding,
+            bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

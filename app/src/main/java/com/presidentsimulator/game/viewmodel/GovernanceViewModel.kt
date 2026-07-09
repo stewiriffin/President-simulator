@@ -3,7 +3,6 @@ package com.presidentsimulator.game.viewmodel
 import com.presidentsimulator.game.data.Alliance
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.GlobalGovernanceState
-import com.presidentsimulator.game.data.PLAYER_COUNTRY_ID
 import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.UNResolution
 import java.util.UUID
@@ -72,12 +71,13 @@ class GovernanceViewModel(
             if (state.diplomacy.rivalById(targetCountryId) == null) return state
         }
 
+        val playerId = state.playerNation.id
         val resolution = UNResolution(
             resolutionId = UUID.randomUUID().toString(),
             type = type,
-            proposerCountryId = PLAYER_COUNTRY_ID,
+            proposerCountryId = playerId,
             targetCountryId = if (type.requiresTarget) targetCountryId else null,
-            votesFor = listOf(PLAYER_COUNTRY_ID),
+            votesFor = listOf(playerId),
             votesAgainst = emptyList(),
             votingTimeRemaining = type.votingDurationTicks,
         )
@@ -102,7 +102,7 @@ class GovernanceViewModel(
     ): GameState {
         if (state.gameOver.isGameOver) return state
         val resolution = state.governance.activeResolution ?: return state
-        if (countryId == PLAYER_COUNTRY_ID) return state
+        if (state.playerNation.matchesCountryId(countryId)) return state
         if (state.diplomacy.rivalById(countryId) == null) return state
         if (resolution.hasVoted(countryId)) return state
         if (state.vitals.budget < BRIBE_COST) return state
@@ -152,10 +152,11 @@ class GovernanceViewModel(
         }
         if (accepted.isEmpty()) return state
 
-        val members = (listOf(PLAYER_COUNTRY_ID) + accepted).distinct()
+        val playerId = state.playerNation.id
+        val members = (listOf(playerId) + accepted).distinct()
         val sharedDefcon = members
             .map { memberId ->
-                if (memberId == PLAYER_COUNTRY_ID) {
+                if (state.playerNation.matchesCountryId(memberId)) {
                     state.military.defcon
                 } else {
                     // Rivals do not expose DEFCON; approximate from hostility.
@@ -174,7 +175,7 @@ class GovernanceViewModel(
         val alliance = Alliance(
             allianceId = UUID.randomUUID().toString(),
             name = trimmedName,
-            leaderCountryId = PLAYER_COUNTRY_ID,
+            leaderCountryId = playerId,
             memberCountryIds = members,
             sharedDefconLevel = sharedDefcon.coerceIn(1, 5),
         )
@@ -208,7 +209,7 @@ class GovernanceViewModel(
     fun dissolveAlliance(state: GameState, allianceId: String): GameState {
         if (state.gameOver.isGameOver) return state
         val alliance = state.governance.allianceById(allianceId) ?: return state
-        if (alliance.leaderCountryId != PLAYER_COUNTRY_ID) return state
+        if (!state.playerNation.matchesCountryId(alliance.leaderCountryId)) return state
         return state.copy(
             governance = state.governance.copy(
                 activeAlliances = state.governance.activeAlliances.filterNot {
@@ -285,7 +286,7 @@ class GovernanceViewModel(
             ResolutionType.WEAPONS_BAN -> chance += 0.04f
         }
         val alliedWithPlayer = state.governance.activeAlliances.any { alliance ->
-            PLAYER_COUNTRY_ID in alliance.memberCountryIds &&
+            alliance.memberCountryIds.any { state.playerNation.matchesCountryId(it) } &&
                 countryId in alliance.memberCountryIds
         }
         if (alliedWithPlayer) {
@@ -433,7 +434,7 @@ class GovernanceViewModel(
 
         fun allianceMilitaryPower(state: GameState, alliance: Alliance): Double {
             return alliance.memberCountryIds.sumOf { memberId ->
-                if (memberId == PLAYER_COUNTRY_ID) {
+                if (state.playerNation.matchesCountryId(memberId)) {
                     state.effectiveCombatStrength
                 } else {
                     state.diplomacy.rivalById(memberId)?.militaryStrength ?: 0.0
@@ -442,7 +443,7 @@ class GovernanceViewModel(
         }
 
         fun countryDisplayName(state: GameState, countryId: String): String {
-            if (countryId == PLAYER_COUNTRY_ID) return "Your Nation"
+            if (state.playerNation.matchesCountryId(countryId)) return state.playerNation.name
             return state.diplomacy.rivalById(countryId)?.name ?: countryId
         }
     }

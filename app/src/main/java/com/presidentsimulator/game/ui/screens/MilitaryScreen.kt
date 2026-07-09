@@ -50,6 +50,8 @@ import com.presidentsimulator.game.ui.components.NssCompactKpi
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
 import com.presidentsimulator.game.ui.components.NssRecruitCard
 import com.presidentsimulator.game.ui.components.NssTabBar
 import com.presidentsimulator.game.ui.components.NssUnitCard
@@ -129,6 +131,7 @@ fun MilitaryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .nssMinistryScrollPadding()
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall),
         ) {
@@ -143,6 +146,7 @@ fun MilitaryScreen(
 
 @Composable
 private fun ForcesTab(state: GameState) {
+    val layout = rememberNssLayoutSpec()
     var branch by remember { mutableStateOf("ARMY") }
     val military = state.military
     val armyUnits = listOf(
@@ -211,7 +215,7 @@ private fun ForcesTab(state: GameState) {
         modifier = Modifier.padding(top = Dimens.SpacingSmall, bottom = Dimens.SpacingXSmall),
     )
 
-    activeUnits.chunked(2).forEach { row ->
+    activeUnits.chunked(layout.gridColumns).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { unit ->
                 NssUnitCard(
@@ -238,6 +242,7 @@ private fun RecruitmentTab(
     viewModel: GameViewModel,
     audio: GameAudioManager,
 ) {
+    val layout = rememberNssLayoutSpec()
     var personnelQty by remember { mutableIntStateOf(0) }
     var hardwareQtys by remember { mutableStateOf(MilitaryHardware.entries.associateWith { 0 }) }
     val batchSize = DiplomacyViewModel.RECRUIT_BATCH_SIZE
@@ -245,26 +250,54 @@ private fun RecruitmentTab(
     val hardwareCost = hardwareQtys.entries.sumOf { (hw, qty) -> hw.unitCost * qty }
     val totalCost = personnelCost + hardwareCost
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+    if (layout.gridColumns == 1) {
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .border(1.dp, NssPrimary.copy(alpha = 0.4f))
-                .background(NssPrimary.copy(alpha = 0.08f))
-                .padding(Dimens.ContentPadding),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(Dimens.GridGap),
         ) {
-            Text("TOTAL COMMISSION COST", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
-            Text(formatMa2Money(totalCost), color = NssPrimary, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, NssPrimary.copy(alpha = 0.4f))
+                    .background(NssPrimary.copy(alpha = 0.08f))
+                    .padding(Dimens.ContentPadding),
+            ) {
+                Text("TOTAL COMMISSION COST", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+                Text(formatMa2Money(totalCost), color = NssPrimary, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, com.presidentsimulator.game.ui.theme.NssBorder)
+                    .background(com.presidentsimulator.game.ui.theme.NssCard)
+                    .padding(Dimens.ContentPadding),
+            ) {
+                Text("AVAILABLE TREASURY", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+                Text(formatMa2Money(state.vitals.budget), color = com.presidentsimulator.game.ui.theme.NssForeground, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .border(1.dp, com.presidentsimulator.game.ui.theme.NssBorder)
-                .background(com.presidentsimulator.game.ui.theme.NssCard)
-                .padding(Dimens.ContentPadding),
-        ) {
-            Text("AVAILABLE TREASURY", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
-            Text(formatMa2Money(state.vitals.budget), color = com.presidentsimulator.game.ui.theme.NssForeground, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+    } else {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, NssPrimary.copy(alpha = 0.4f))
+                    .background(NssPrimary.copy(alpha = 0.08f))
+                    .padding(Dimens.ContentPadding),
+            ) {
+                Text("TOTAL COMMISSION COST", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+                Text(formatMa2Money(totalCost), color = NssPrimary, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, com.presidentsimulator.game.ui.theme.NssBorder)
+                    .background(com.presidentsimulator.game.ui.theme.NssCard)
+                    .padding(Dimens.ContentPadding),
+            ) {
+                Text("AVAILABLE TREASURY", style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = com.presidentsimulator.game.ui.theme.NssMutedForeground)
+                Text(formatMa2Money(state.vitals.budget), color = com.presidentsimulator.game.ui.theme.NssForeground, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 
@@ -284,7 +317,7 @@ private fun RecruitmentTab(
     )
 
     NssBranchHeader("HARDWARE", MilitaryHardware.entries.size, NssSky, Icons.Default.Anchor)
-    MilitaryHardware.entries.chunked(2).forEach { row ->
+    MilitaryHardware.entries.chunked(layout.gridColumns).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { hardware ->
                 val qty = hardwareQtys[hardware] ?: 0

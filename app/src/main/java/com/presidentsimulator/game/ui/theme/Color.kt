@@ -28,6 +28,9 @@ val NssOrange = Color(0xFFB45309)
 /** Text and overlays on photo headers and dark scrims */
 val NssOnPhoto = Color(0xFFFFFFFF)
 
+/** Inset metrics strip under the main HUD row (zip reference `#15294e`). */
+val NssHudMetricsBar = Color(0xFF15294E)
+
 // Legacy aliases — mapped to NSS tokens for existing screens
 val Ma2Teal = NssPrimary
 val Ma2TealDark = Color(0xFF152A52)

@@ -2,7 +2,7 @@ package com.presidentsimulator.game.ui.components
 
 /**
  * Unsplash image URLs from the current Nation State Simulator Figma Make export
- * (`Nation State Simulator UI Design (3).zip` → `ui_reference/`).
+ * Leader portraits and banner art URLs (Nation State Simulator design reference).
  * Loaded at runtime via Coil; gradients are used as offline fallback.
  */
 object NssCardImages {
@@ -31,6 +31,16 @@ object NssCardImages {
     const val BANNER_FOREIGN = "https://images.unsplash.com/photo-1770308144171-77831cf9130a?w=1400&h=300&fit=crop&auto=format"
     const val MAP = "https://images.unsplash.com/photo-1543191879-742cb35a3a4e?w=1400&h=500&fit=crop&auto=format"
     const val PARLIAMENT = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=500&h=240&fit=crop&auto=format"
+
+    const val LEADER_1 = "https://images.unsplash.com/photo-1556157382-97eda2d62296?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_2 = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_3 = "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_4 = "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_5 = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_6 = "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_7 = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format"
+    const val LEADER_8 = "https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&h=150&fit=crop&auto=format"
+    const val LOCKED_BG = "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=800&h=600&fit=crop&auto=format"
 
     const val BANNER_DOMESTIC = "https://images.unsplash.com/photo-1524634036752-81ec41a4f1ea?w=1400&h=200&fit=crop&auto=format"
     const val BANNER_INTELLIGENCE = "https://images.unsplash.com/photo-1737502483541-92e91801cfaf?w=1400&h=200&fit=crop&auto=format"

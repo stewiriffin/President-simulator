@@ -29,8 +29,16 @@ object Dimens {
     val BadgeCorner = 6.dp
     val PillCorner = 12.dp
 
-    /** Matches reference HUD `h-12` (~48dp) plus inset breathing room. */
-    val HudHeight = 48.dp
+    /** Two-row HUD: brand row + inset metrics strip (zip reference). */
+    val HudHeight = 72.dp
+
+    /** Shorter ministry photo header on small / landscape phones. */
+    val CompactScreenHeaderHeight = 96.dp
+
+    /** Extra scroll padding above bottom nav so last cards are not clipped. */
+    val MinistryScrollBottomPadding = 20.dp
+
+    val TabBarHeight = 44.dp
     val BottomNavHeight = 56.dp
 
     /** Matches reference ScreenHeader `h-32`. */

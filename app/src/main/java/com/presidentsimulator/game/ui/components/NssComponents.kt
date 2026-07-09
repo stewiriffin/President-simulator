@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -185,10 +187,13 @@ fun NssScreenHeader(
     gradientColors: List<Color> = listOf(NssPrimary, NssPrimary.copy(alpha = 0.7f)),
     modifier: Modifier = Modifier,
 ) {
+    val layout = rememberNssLayoutSpec()
+    val headerHeight = layout.screenHeaderHeight
+    val titleSize = if (layout.isCompactHeight) 22.sp else 28.sp
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(Dimens.ScreenHeaderHeight),
+            .height(headerHeight),
     ) {
         NssPhotoHeader(
             imageUrl = imageUrl,
@@ -213,7 +218,7 @@ fun NssScreenHeader(
                 text = title.uppercase(),
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
                 fontWeight = FontWeight.Black,
-                fontSize = 28.sp,
+                fontSize = titleSize,
                 color = NssOnPhoto,
                 letterSpacing = 1.sp,
                 modifier = Modifier.padding(bottom = Dimens.SpacingSmall),
@@ -361,6 +366,7 @@ fun NssTabBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .background(NssMuted),
         ) {
             tabs.forEach { tab ->
@@ -368,22 +374,23 @@ fun NssTabBar(
                 Box(
                     modifier = Modifier
                         .clickable { onTabSelected(tab) }
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(horizontal = if (tabs.size > 4) 14.dp else 20.dp, vertical = 10.dp),
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = tab,
                             style = MaterialTheme.typography.labelLarge,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
+                            maxLines = 1,
                             color = if (selected) NssPrimary else NssMutedForeground,
                         )
                         if (selected) {
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Box(
                                 modifier = Modifier
-                                    .width(48.dp)
-                                    .height(1.dp)
-                                    .background(NssPrimary),
+                                    .width(40.dp)
+                                    .height(2.dp)
+                                    .background(NssAccent),
                             )
                         }
                     }
@@ -423,7 +430,7 @@ fun NssMinistryBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(128.dp),
+            .height(Dimens.ScreenHeaderHeight),
     ) {
         NssPhotoHeader(
             imageUrl = imageUrl,

@@ -61,8 +61,11 @@ import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
 import com.presidentsimulator.game.ui.components.HeroHeaderScrim
 import com.presidentsimulator.game.ui.components.StripHeaderBottomScrim
 import com.presidentsimulator.game.ui.components.NssPhotoHeader
+import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
 import com.presidentsimulator.game.ui.components.collectAlertCount
 import com.presidentsimulator.game.ui.components.collectAlerts
+import com.presidentsimulator.game.ui.components.formatCompactMil
 import com.presidentsimulator.game.ui.components.formatCompactMoney
 import com.presidentsimulator.game.ui.navigation.GameDestination
 import com.presidentsimulator.game.ui.theme.NssAccent
@@ -95,6 +98,7 @@ fun MainDashboardScreen(
     onNavigate: (GameDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val layout = rememberNssLayoutSpec()
     val analytics = remember { AnalyticsSaveViewModel() }
     val gdp = remember(state) { analytics.calculateGDP(state) }
     val worldRank = remember(state) { analytics.worldEconomicRank(state) }
@@ -109,9 +113,10 @@ fun MainDashboardScreen(
             .fillMaxSize()
             .background(NssBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .nssMinistryScrollPadding(),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(Dimens.DashboardHeroHeight)) {
+        Box(modifier = Modifier.fillMaxWidth().height(layout.heroHeight)) {
             NssPhotoHeader(
                 imageUrl = NssCardImages.MAP,
                 fallbackGradient = listOf(NssPrimary.copy(alpha = 0.5f), NssBackground),
@@ -125,17 +130,17 @@ fun MainDashboardScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "THE REPUBLIC OF",
+                    text = "THE ${state.playerNation.governmentLabel.uppercase()} OF",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = NssOnPhoto.copy(alpha = 0.8f),
                     letterSpacing = 5.sp,
                 )
                 Text(
-                    text = "VELTRIA",
+                    text = state.playerNation.name.uppercase(),
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Black,
-                    fontSize = 40.sp,
+                    fontSize = layout.heroTitleSp,
                     color = NssOnPhoto,
                     letterSpacing = 2.sp,
                 )
@@ -161,9 +166,32 @@ fun MainDashboardScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.SectionGap),
         ) {
             DashboardSection(
-                title = "Empire Status",
+                title = "Strategic Overview",
                 subtitle = "Turn ${state.year}.$quarter",
             ) {
+                val vitalCards = listOf(
+                    VitalCardModel(Icons.Default.AttachMoney, "Treasury", formatCompactMoney(state.vitals.budget), if (state.netIncome < 0) "↓ Declining" else "↑ Growing", budgetPct(state), NssAccent, state.netIncome < 0, 0),
+                    VitalCardModel(Icons.Default.Shield, "Stability", "${stability.roundToInt()}%", if (stability < 60f) "↓ At risk" else "↑ Steady", stability, Color(0xFFD97706), stability < 60f, 70),
+                    VitalCardModel(Icons.Default.SportsMartialArts, "Military", formatCompactMil(milPower), "Power index", (milPower / 100f).coerceIn(0f, 100f), NssPrimary, false, 140),
+                    VitalCardModel(Icons.Default.Groups, "Approval", state.vitals.approval.toApprovalString(), if (state.vitals.approval < 50f) "↓ Unrest" else "↑ Stable", state.vitals.approval, NssEmerald, state.vitals.approval < 50f, 210),
+                )
+                if (layout.gridColumns == 1) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
+                        vitalCards.forEach { card ->
+                            GameVitalCard(
+                                icon = card.icon,
+                                label = card.label,
+                                value = card.value,
+                                sub = card.sub,
+                                pct = card.pct,
+                                color = card.color,
+                                warn = card.warn,
+                                modifier = Modifier.fillMaxWidth(),
+                                delayMs = card.delay,
+                            )
+                        }
+                    }
+                } else {
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall)) {
                         GameVitalCard(
@@ -213,6 +241,7 @@ fun MainDashboardScreen(
                             delayMs = 210,
                         )
                     }
+                }
                 }
             }
 
@@ -429,6 +458,17 @@ private fun GameVitalCard(
         NssGameBar(percent = pct, color = color, animationDelayMs = delayMs)
     }
 }
+
+private data class VitalCardModel(
+    val icon: ImageVector,
+    val label: String,
+    val value: String,
+    val sub: String,
+    val pct: Float,
+    val color: Color,
+    val warn: Boolean,
+    val delay: Int,
+)
 
 private data class DashboardSituation(
     val severity: String,

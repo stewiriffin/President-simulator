@@ -68,6 +68,8 @@ import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssSectorCard
 import com.presidentsimulator.game.ui.components.NssStripPhotoCard
 import com.presidentsimulator.game.ui.components.NssTabBar
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
 import com.presidentsimulator.game.ui.components.formatMa2Money
 import com.presidentsimulator.game.viewmodel.TradeMarketViewModel
 import androidx.compose.foundation.layout.WindowInsets
@@ -157,6 +159,7 @@ fun EconomyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .nssMinistryScrollPadding()
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall + Dimens.SpacingXSmall),
         ) {
@@ -359,6 +362,7 @@ private fun SectorsTab(
     viewModel: GameViewModel,
     audio: GameAudioManager,
 ) {
+    val layout = rememberNssLayoutSpec()
     GdpBreakdownCard(sectors = sectors)
 
     Text(
@@ -370,7 +374,7 @@ private fun SectorsTab(
         modifier = Modifier.padding(top = Dimens.SpacingSmall, bottom = Dimens.SpacingXSmall),
     )
 
-    sectors.chunked(2).forEach { row ->
+    sectors.chunked(layout.gridColumns).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.GridGap)) {
             row.forEach { sector ->
                 NssSectorCard(

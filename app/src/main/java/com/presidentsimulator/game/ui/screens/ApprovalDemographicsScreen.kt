@@ -37,6 +37,7 @@ import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -140,6 +141,7 @@ fun ApprovalDemographicsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .nssMinistryScrollPadding()
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

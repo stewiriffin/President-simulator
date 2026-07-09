@@ -2,9 +2,19 @@ package com.presidentsimulator.game.data
 
 import kotlinx.serialization.Serializable
 
-/** Player nation identifier used as alliance leader and resolution proposer. */
-const val PLAYER_COUNTRY_ID = "player"
-const val PLAYER_COUNTRY_NAME = "Your Nation"
+/** Legacy save id — migrated to [PlayerNation.id] on load. */
+const val LEGACY_PLAYER_COUNTRY_ID = "player"
+
+@Serializable
+data class PlayerNation(
+    val id: String = "veltra",
+    val name: String = "Veltra",
+    val flagEmoji: String = "🏛",
+    val governmentLabel: String = "Republic",
+) {
+    fun matchesCountryId(countryId: String): Boolean =
+        countryId == id || countryId == LEGACY_PLAYER_COUNTRY_ID
+}
 
 /**
  * Formal multi-nation coalition.

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
+import com.presidentsimulator.game.ui.components.NssConfirmDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -113,7 +113,12 @@ fun LawsScreen(
         if (selectedTab == "SOCIETY") {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(Dimens.ContentPadding),
+                contentPadding = PaddingValues(
+                    start = Dimens.ContentPadding,
+                    end = Dimens.ContentPadding,
+                    top = Dimens.ContentPadding,
+                    bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+                ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { IdeologyPanel(state = state, viewModel = viewModel) }
@@ -122,7 +127,12 @@ fun LawsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(Dimens.ContentPadding),
+                contentPadding = PaddingValues(
+                    start = Dimens.ContentPadding,
+                    end = Dimens.ContentPadding,
+                    top = Dimens.ContentPadding,
+                    bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item { IdeologyPanel(state = state, viewModel = viewModel) }
@@ -417,16 +427,12 @@ private fun LawToggleConfirmationDialog(
     } else {
         "If approval is below the law's threshold, repeal is delayed 3 months. Otherwise it resolves immediately. No refund for prior activation costs."
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(if (request.enabling) "Enact" else "Repeal") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
+    NssConfirmDialog(
+        title = title,
+        body = body,
+        confirmLabel = if (request.enabling) "Enact" else "Repeal",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
     )
 }
 
