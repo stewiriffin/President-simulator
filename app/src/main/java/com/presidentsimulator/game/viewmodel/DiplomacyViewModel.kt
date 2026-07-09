@@ -1,14 +1,17 @@
 package com.presidentsimulator.game.viewmodel
 
 import com.presidentsimulator.game.data.DeploymentStatus
+import com.presidentsimulator.game.data.EconomicSector
 import com.presidentsimulator.game.data.NationalPerkEffects
 import com.presidentsimulator.game.data.DiplomacyState
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.MilitaryHardware
+import com.presidentsimulator.game.data.SectorInvestment
 import com.presidentsimulator.game.data.TreatyType
 import com.presidentsimulator.game.data.WarGoal
 import com.presidentsimulator.game.data.WarOutcome
 import com.presidentsimulator.game.data.WarState
+import com.presidentsimulator.game.data.awardSectorXp
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -42,11 +45,15 @@ class DiplomacyViewModel(
      */
     fun simulateGeopolitics(state: GameState): GameState {
         val militaryPressure = militaryPressureScore(state)
+        var sanctionsBudget = 0L
+        var sanctionsApproval = 0f
+        val playerStrength = state.effectiveCombatStrength
+
         val updatedRivals = state.diplomacy.rivals.map { rival ->
             var score = rival.relationshipScore.toFloat()
 
-            // Aggressive posture and heavy force projection alarm neighbors.
             score -= militaryPressure
+            score -= rival.grudgeLevel * 0.65f
 
             if (rival.hasTradeTreaty) {
                 score += 0.8f
@@ -55,38 +62,60 @@ class DiplomacyViewModel(
                 score += 0.4f
             }
 
-            // Random diplomatic weather (-3 … +3).
             score += random.nextInt(-3, 4)
 
-            // Hostile blocs tend to polarize.
             if (rival.relationshipScore <= -40 && random.nextFloat() < 0.20f) {
                 score -= random.nextInt(2, 6)
             }
 
-            // At-war target is locked at floor hostility.
             if (state.diplomacy.activeWar?.targetCountryId == rival.id) {
                 score = -100f
             }
 
-            val hostile = score <= -25f
+            val nextScore = score.roundToInt().coerceIn(-100, 100)
+            val hostile = nextScore <= -25
             val militaryGrowth = if (hostile) 1.8 else 0.6
             val economicGrowth = if (rival.hasTradeTreaty) 0.004 else 0.002
 
+            if (
+                hostile &&
+                state.diplomacy.activeWar == null &&
+                rival.militaryStrength > playerStrength * 0.85 &&
+                random.nextFloat() < 0.07f
+            ) {
+                sanctionsBudget += 400_000_000L
+                sanctionsApproval += 0.6f
+            }
+
+            val grudgeDecay = if (rival.grudgeLevel > 0 && random.nextFloat() < 0.12f) 1 else 0
+
             rival.copy(
-                relationshipScore = score.roundToInt().coerceIn(-100, 100),
+                relationshipScore = nextScore,
                 militaryStrength = (rival.militaryStrength + militaryGrowth).coerceAtMost(1_200.0),
                 economicPower = (rival.economicPower + economicGrowth).coerceAtMost(2.0),
+                grudgeLevel = (rival.grudgeLevel - grudgeDecay).coerceAtLeast(0),
             )
         }
+
+        val cooledCooldowns = state.diplomacy.diplomaticCooldowns
+            .mapValues { (_, months) -> (months - 1).coerceAtLeast(0) }
+            .filterValues { it > 0 }
 
         val influenceRegen = if (state.diplomacy.activeWar == null) 2 else 1
         val diplomacy = state.diplomacy.copy(
             rivals = updatedRivals,
+            diplomaticCooldowns = cooledCooldowns,
             diplomaticInfluence = (state.diplomacy.diplomaticInfluence + influenceRegen)
                 .coerceIn(0, MAX_INFLUENCE),
         )
 
-        return state.copy(diplomacy = diplomacy)
+        return state.copy(
+            vitals = state.vitals.copy(
+                budget = (state.vitals.budget - sanctionsBudget).coerceAtLeast(0L),
+                approval = (state.vitals.approval - sanctionsApproval).coerceIn(0f, 100f),
+            ),
+            diplomacy = diplomacy,
+        )
     }
 
     /**
@@ -330,6 +359,7 @@ class DiplomacyViewModel(
                 rival.copy(
                     hasTradeTreaty = false,
                     relationshipScore = (rival.relationshipScore - 12).coerceIn(-100, 100),
+                    grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
                 )
             }
             TreatyType.NON_AGGRESSION -> {
@@ -337,6 +367,7 @@ class DiplomacyViewModel(
                 rival.copy(
                     hasNonAggressionPact = false,
                     relationshipScore = (rival.relationshipScore - 18).coerceIn(-100, 100),
+                    grudgeLevel = (rival.grudgeLevel + 2).coerceAtMost(5),
                 )
             }
             TreatyType.PEACE -> rival
@@ -371,12 +402,20 @@ class DiplomacyViewModel(
         )
     }
 
-    /** Soft-power grant: spend budget to improve relations. */
+    /** Soft-power grant: spend budget to improve relations (cooldown + diminishing returns). */
     fun sendForeignAid(state: GameState, targetCountryId: String): GameState {
         if (state.gameOver.isGameOver) return state
-        if (state.diplomacy.rivalById(targetCountryId) == null) return state
+        val rival = state.diplomacy.rivalById(targetCountryId) ?: return state
         if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return state
         if (state.vitals.budget < FOREIGN_AID_COST) return state
+        if (cooldownRemaining(state.diplomacy, ACTION_AID, targetCountryId) > 0) return state
+
+        val relBonus = if (rival.relationshipScore >= 65) {
+            (FOREIGN_AID_REL_BONUS * 0.5f).roundToInt()
+        } else {
+            FOREIGN_AID_REL_BONUS
+        }
+
         return state.copy(
             vitals = state.vitals.copy(
                 budget = state.vitals.budget - FOREIGN_AID_COST,
@@ -384,10 +423,15 @@ class DiplomacyViewModel(
             ),
             diplomacy = state.diplomacy
                 .updateRival(targetCountryId) {
-                    it.copy(relationshipScore = (it.relationshipScore + FOREIGN_AID_REL_BONUS).coerceIn(-100, 100))
+                    it.copy(
+                        relationshipScore = (it.relationshipScore + relBonus).coerceIn(-100, 100),
+                        grudgeLevel = (it.grudgeLevel - 1).coerceAtLeast(0),
+                    )
                 }
                 .copy(
                     diplomaticInfluence = (state.diplomacy.diplomaticInfluence + 2).coerceAtMost(100),
+                    diplomaticCooldowns = state.diplomacy.diplomaticCooldowns +
+                        (cooldownKey(ACTION_AID, targetCountryId) to AID_COOLDOWN_MONTHS),
                 ),
         )
     }
@@ -395,10 +439,18 @@ class DiplomacyViewModel(
     /** High-profile visit: spend influence for a larger relationship swing. */
     fun conductStateVisit(state: GameState, targetCountryId: String): GameState {
         if (state.gameOver.isGameOver) return state
-        if (state.diplomacy.rivalById(targetCountryId) == null) return state
+        val rival = state.diplomacy.rivalById(targetCountryId) ?: return state
         if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return state
         if (state.diplomacy.diplomaticInfluence < STATE_VISIT_INFLUENCE_COST) return state
         if (state.vitals.budget < STATE_VISIT_BUDGET_COST) return state
+        if (cooldownRemaining(state.diplomacy, ACTION_VISIT, targetCountryId) > 0) return state
+
+        val relBonus = if (rival.relationshipScore >= 70) {
+            (STATE_VISIT_REL_BONUS * 0.55f).roundToInt()
+        } else {
+            STATE_VISIT_REL_BONUS
+        }
+
         return state.copy(
             vitals = state.vitals.copy(
                 budget = state.vitals.budget - STATE_VISIT_BUDGET_COST,
@@ -406,11 +458,16 @@ class DiplomacyViewModel(
             ),
             diplomacy = state.diplomacy
                 .updateRival(targetCountryId) {
-                    it.copy(relationshipScore = (it.relationshipScore + STATE_VISIT_REL_BONUS).coerceIn(-100, 100))
+                    it.copy(
+                        relationshipScore = (it.relationshipScore + relBonus).coerceIn(-100, 100),
+                        grudgeLevel = (it.grudgeLevel - 1).coerceAtLeast(0),
+                    )
                 }
                 .copy(
                     diplomaticInfluence = (state.diplomacy.diplomaticInfluence - STATE_VISIT_INFLUENCE_COST)
                         .coerceAtLeast(0),
+                    diplomaticCooldowns = state.diplomacy.diplomaticCooldowns +
+                        (cooldownKey(ACTION_VISIT, targetCountryId) to VISIT_COOLDOWN_MONTHS),
                 ),
         )
     }
@@ -477,7 +534,7 @@ class DiplomacyViewModel(
             MilitaryHardware.NUCLEAR_ARSENAL ->
                 military.copy(nuclearArsenal = military.nuclearArsenal + amount)
         }
-        return state.copy(
+        return state.awardSectorXp(EconomicSector.DEFENSE, SectorInvestment.XP_PER_TANK_BATCH * amount).copy(
             vitals = state.vitals.copy(budget = state.vitals.budget - cost),
             military = updated,
         )
@@ -623,6 +680,31 @@ class DiplomacyViewModel(
         const val STATE_VISIT_BUDGET_COST = 1_500_000_000L
         const val STATE_VISIT_INFLUENCE_COST = 12
         const val STATE_VISIT_REL_BONUS = 14
+        const val AID_COOLDOWN_MONTHS = 6
+        const val VISIT_COOLDOWN_MONTHS = 9
+        private const val ACTION_AID = "aid"
+        private const val ACTION_VISIT = "visit"
+
+        fun cooldownKey(action: String, rivalId: String): String = "${action}_$rivalId"
+
+        fun cooldownRemaining(diplomacy: DiplomacyState, action: String, rivalId: String): Int =
+            diplomacy.diplomaticCooldowns[cooldownKey(action, rivalId)] ?: 0
+
+        fun canSendForeignAid(state: GameState, targetCountryId: String): Boolean {
+            if (state.diplomacy.rivalById(targetCountryId) == null) return false
+            if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return false
+            if (state.vitals.budget < FOREIGN_AID_COST) return false
+            return cooldownRemaining(state.diplomacy, ACTION_AID, targetCountryId) <= 0
+        }
+
+        fun canConductStateVisit(state: GameState, targetCountryId: String): Boolean {
+            if (state.diplomacy.rivalById(targetCountryId) == null) return false
+            if (state.diplomacy.activeWar?.targetCountryId == targetCountryId) return false
+            if (state.vitals.budget < STATE_VISIT_BUDGET_COST) return false
+            if (state.diplomacy.diplomaticInfluence < STATE_VISIT_INFLUENCE_COST) return false
+            return cooldownRemaining(state.diplomacy, ACTION_VISIT, targetCountryId) <= 0
+        }
+
         const val VICTORY_REPARATIONS = 20_000_000_000L
         const val DEFEAT_PENALTY = 15_000_000_000L
         const val EARLY_SETTLEMENT_MIN_PROGRESS = 60f

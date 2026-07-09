@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playBuildSuccess
+import com.presidentsimulator.game.data.EconomicSector
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.InfrastructureType
 import com.presidentsimulator.game.data.ResourceType
@@ -778,6 +779,7 @@ private fun TradeTab(
 private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
     val economy = state.economy
     val production = state.production
+    val sectors = economy.sectorInvestment
     val total = (
         economy.factories + economy.farms + economy.housing +
             production.powerPlants + production.mines +
@@ -785,15 +787,17 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
         ).toFloat().coerceAtLeast(1f)
 
     fun share(count: Int): Float = (count / total * 100f).coerceIn(1f, 80f)
+    fun sectorGrowth(sector: EconomicSector): Float =
+        0.4f + sectors.level(sector) * 0.35f
 
     return listOf(
         SectorModel(
             name = "Heavy Industry",
             gdpShare = share(economy.factories),
             employment = 18.7f,
-            growth = 1.8f,
-            level = economy.factories.coerceIn(1, 5),
-            xp = (economy.factories * 8).coerceIn(10, 95),
+            growth = sectorGrowth(EconomicSector.INDUSTRY),
+            level = sectors.level(EconomicSector.INDUSTRY).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.INDUSTRY).coerceIn(10, 99),
             gradient = NssGradients.Sky,
             imageUrl = NssCardImages.INDUSTRY,
             investAction = SectorInvestAction.FACTORY,
@@ -803,9 +807,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Agriculture",
             gdpShare = share(economy.farms),
             employment = 6.1f,
-            growth = if (production.foodShortage) -1.2f else 0.8f,
-            level = economy.farms.coerceIn(1, 5),
-            xp = (economy.farms * 7).coerceIn(10, 95),
+            growth = if (production.foodShortage) -1.2f else sectorGrowth(EconomicSector.AGRICULTURE),
+            level = sectors.level(EconomicSector.AGRICULTURE).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.AGRICULTURE).coerceIn(10, 99),
             gradient = NssGradients.Amber,
             imageUrl = NssCardImages.AGRICULTURE,
             investAction = SectorInvestAction.FARM,
@@ -815,9 +819,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Housing",
             gdpShare = share(economy.housing),
             employment = 12.4f,
-            growth = 1.1f,
-            level = economy.housing.coerceIn(1, 5),
-            xp = (economy.housing * 6).coerceIn(10, 95),
+            growth = sectorGrowth(EconomicSector.HOUSING),
+            level = sectors.level(EconomicSector.HOUSING).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.HOUSING).coerceIn(10, 99),
             gradient = NssGradients.Emerald,
             imageUrl = NssCardImages.SERVICES,
             investAction = SectorInvestAction.HOUSING,
@@ -827,9 +831,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Energy",
             gdpShare = share(production.powerPlants),
             employment = 3.4f,
-            growth = if (production.energyShortage) -1.5f else 0.6f,
-            level = production.powerPlants.coerceIn(1, 5),
-            xp = (production.powerPlants * 9).coerceIn(10, 95),
+            growth = if (production.energyShortage) -1.5f else sectorGrowth(EconomicSector.ENERGY),
+            level = sectors.level(EconomicSector.ENERGY).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.ENERGY).coerceIn(10, 99),
             gradient = NssGradients.Orange,
             imageUrl = NssCardImages.ENERGY,
             investAction = SectorInvestAction.POWER_PLANT,
@@ -839,9 +843,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Mining",
             gdpShare = share(production.mines),
             employment = 8.2f,
-            growth = 0.9f,
-            level = production.mines.coerceIn(1, 5),
-            xp = (production.mines * 8).coerceIn(10, 95),
+            growth = sectorGrowth(EconomicSector.MINING),
+            level = sectors.level(EconomicSector.MINING).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.MINING).coerceIn(10, 99),
             gradient = NssGradients.Indigo,
             imageUrl = NssCardImages.MANUFACTURING,
             investAction = SectorInvestAction.MINE,
@@ -851,9 +855,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Technology",
             gdpShare = (state.research.unlockedTechIds.size * 6f).coerceIn(4f, 25f),
             employment = 8.9f,
-            growth = 6.7f,
-            level = state.society.universities.coerceIn(1, 5),
-            xp = (state.society.universities * 8).coerceIn(10, 95),
+            growth = sectorGrowth(EconomicSector.TECHNOLOGY) + 2f,
+            level = sectors.level(EconomicSector.TECHNOLOGY).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.TECHNOLOGY).coerceIn(10, 99),
             gradient = NssGradients.Violet,
             imageUrl = NssCardImages.TECHNOLOGY,
             investAction = SectorInvestAction.UNIVERSITY,
@@ -863,9 +867,9 @@ private fun buildSectors(state: GameState, gdp: Long): List<SectorModel> {
             name = "Defense Ind.",
             gdpShare = (state.military.tanks.coerceAtMost(40) / 2f).coerceIn(3f, 18f),
             employment = 6.4f,
-            growth = 2.1f,
-            level = (state.military.tanks / 5).coerceIn(1, 5),
-            xp = (state.military.tanks * 2).coerceIn(10, 95),
+            growth = sectorGrowth(EconomicSector.DEFENSE),
+            level = sectors.level(EconomicSector.DEFENSE).coerceAtLeast(1),
+            xp = sectors.progressPercent(EconomicSector.DEFENSE).coerceIn(10, 99),
             gradient = NssGradients.Red,
             imageUrl = NssCardImages.DEFENSE_IND,
             investAction = SectorInvestAction.TANKS,

@@ -5,7 +5,10 @@ import com.presidentsimulator.game.data.ResearchState
 import com.presidentsimulator.game.data.SocietyMinistry
 import com.presidentsimulator.game.data.SocietyState
 import com.presidentsimulator.game.data.StateReligion
+import com.presidentsimulator.game.data.EconomicSector
+import com.presidentsimulator.game.data.SectorInvestment
 import com.presidentsimulator.game.data.TechCatalog
+import com.presidentsimulator.game.data.awardSectorXp
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -95,18 +98,25 @@ class AdvancementViewModel {
     }
 
     /**
-     * Begins researching [techId] when no other project is active.
+     * Begins researching [techId], or queues it when another project is active.
      */
     fun startResearch(state: GameState, techId: String): GameState {
         if (state.gameOver.isGameOver) return state
         val tech = TechCatalog.byId(techId) ?: return state
         if (state.research.isUnlocked(techId)) return state
         if (!state.research.prerequisitesMet(tech)) return state
-        if (state.research.activeTechId != null) return state
         if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return state
 
+        val research = state.research
+        if (research.activeTechId == techId || research.queuedTechId == techId) return state
+
+        if (research.activeTechId != null) {
+            if (research.queuedTechId != null) return state
+            return state.copy(research = research.copy(queuedTechId = techId))
+        }
+
         return state.copy(
-            research = state.research.copy(
+            research = research.copy(
                 activeTechId = techId,
                 researchProgress = 0L,
                 extraFundingTier = 0,
@@ -198,19 +208,36 @@ class AdvancementViewModel {
         newSciencePoints: Long,
     ): GameState {
         val tech = TechCatalog.byId(techId) ?: return state
-        return state.copy(
-            research = state.research.copy(
-                activeTechId = null,
-                researchProgress = 0L,
-                extraFundingTier = 0,
-                sciencePoints = newSciencePoints,
-                unlockedTechIds = state.research.unlockedTechIds + techId,
-            ),
+        val researchAfterUnlock = state.research.copy(
+            activeTechId = null,
+            researchProgress = 0L,
+            extraFundingTier = 0,
+            sciencePoints = newSciencePoints,
+            unlockedTechIds = state.research.unlockedTechIds + techId,
+        )
+        var result = state.copy(
+            research = researchAfterUnlock,
             vitals = state.vitals.copy(
                 approval = (state.vitals.approval + tech.effect.approvalBonus * 0.25f)
                     .coerceIn(0f, 100f),
             ),
         )
+
+        val queued = researchAfterUnlock.queuedTechId ?: return result
+        val queuedTech = TechCatalog.byId(queued) ?: return result.copy(
+            research = result.research.copy(queuedTechId = null),
+        )
+        result = result.copy(research = result.research.copy(queuedTechId = null))
+        if (!result.research.isUnlocked(queued) && result.research.prerequisitesMet(queuedTech)) {
+            result = result.copy(
+                research = result.research.copy(
+                    activeTechId = queued,
+                    researchProgress = 0L,
+                    extraFundingTier = 0,
+                ),
+            )
+        }
+        return result
     }
 
     /**
@@ -255,7 +282,7 @@ class AdvancementViewModel {
     fun buildUniversity(state: GameState): GameState {
         if (state.gameOver.isGameOver) return state
         if (state.vitals.budget < UNIVERSITY_COST) return state
-        return state.copy(
+        return state.awardSectorXp(EconomicSector.TECHNOLOGY, SectorInvestment.XP_PER_UNIVERSITY).copy(
             vitals = state.vitals.copy(budget = state.vitals.budget - UNIVERSITY_COST),
             society = state.society.copy(universities = state.society.universities + 1),
         )
@@ -341,8 +368,11 @@ class AdvancementViewModel {
             val tech = TechCatalog.byId(techId) ?: return false
             if (state.research.isUnlocked(techId)) return false
             if (!state.research.prerequisitesMet(tech)) return false
-            if (state.research.activeTechId != null) return false
             if (techId == "nuclear_fission" && state.governance.nuclearEmbargoActive) return false
+            if (state.research.activeTechId == techId || state.research.queuedTechId == techId) return false
+            if (state.research.activeTechId != null) {
+                return state.research.queuedTechId == null
+            }
             return true
         }
 

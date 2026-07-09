@@ -142,6 +142,7 @@ data class ResearchState(
     val sciencePoints: Long = 120L,
     val unlockedTechIds: List<String> = emptyList(),
     val activeTechId: String? = null,
+    val queuedTechId: String? = null,
     val researchProgress: Long = 0L,
     val extraFundingTier: Int = 0,
 ) {
@@ -155,6 +156,9 @@ data class ResearchState(
 
     val activeTechnology: Technology?
         get() = activeTechId?.let { TechCatalog.byId(it) }
+
+    val queuedTechnology: Technology?
+        get() = queuedTechId?.let { TechCatalog.byId(it) }
 
     val fundingMultiplier: Float
         get() = 1f + extraFundingTier * EXTRA_FUNDING_BONUS_PER_TIER

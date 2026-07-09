@@ -351,13 +351,21 @@ private fun RivalActionPanel(
         state.governance.diplomaticInfluence >= GovernanceViewModel.ALLIANCE_INFLUENCE_COST
     val canWar = DiplomacyViewModel.canDeclareWar(state, rival.id)
     val canTreaty = !warActive && rival.relationshipScore >= 35
-    val canAid = !warActive && state.vitals.budget >= DiplomacyViewModel.FOREIGN_AID_COST
-    val canVisit = !warActive &&
-        state.vitals.budget >= DiplomacyViewModel.STATE_VISIT_BUDGET_COST &&
-        state.diplomacy.diplomaticInfluence >= DiplomacyViewModel.STATE_VISIT_INFLUENCE_COST
+    val canAid = !warActive && DiplomacyViewModel.canSendForeignAid(state, rival.id)
+    val canVisit = !warActive && DiplomacyViewModel.canConductStateVisit(state, rival.id)
+    val aidCooldown = DiplomacyViewModel.cooldownRemaining(state.diplomacy, "aid", rival.id)
+    val visitCooldown = DiplomacyViewModel.cooldownRemaining(state.diplomacy, "visit", rival.id)
 
     NssCard {
         Text("Actions — ${rival.name}", color = NssPrimary, fontWeight = FontWeight.Bold)
+        if (rival.grudgeLevel > 0) {
+            Text(
+                "Grudge level ${rival.grudgeLevel}/5 — relations recover slowly.",
+                fontSize = 10.sp,
+                color = NssMutedForeground,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         AnimatedVisibility(visible = true) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                 if (isWarTarget) {
@@ -367,10 +375,14 @@ private fun RivalActionPanel(
                         Text("Propose Grain Export")
                     }
                     OutlinedButton(onClick = onSendAid, enabled = canAid, modifier = Modifier.fillMaxWidth()) {
-                        Text("Send Foreign Aid")
+                        Text(
+                            if (aidCooldown > 0) "Aid Cooldown ($aidCooldown mo)" else "Send Foreign Aid",
+                        )
                     }
                     OutlinedButton(onClick = onStateVisit, enabled = canVisit, modifier = Modifier.fillMaxWidth()) {
-                        Text("Conduct State Visit")
+                        Text(
+                            if (visitCooldown > 0) "Visit Cooldown ($visitCooldown mo)" else "Conduct State Visit",
+                        )
                     }
                     OutlinedButton(
                         onClick = onNegotiateTradeTreaty,

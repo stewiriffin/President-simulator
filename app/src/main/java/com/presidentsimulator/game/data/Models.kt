@@ -77,7 +77,8 @@ data class GameState(
     val effectiveProductionMultiplier: Float
         get() = legal.combinedProductionModifier *
             research.combinedEffects.productionMultiplier *
-            society.stateReligion.productionMultiplier
+            society.stateReligion.productionMultiplier *
+            economy.sectorInvestment.productionMultiplier()
 
     companion object {
         fun initial(countryId: String = "veltra"): GameState =
@@ -111,6 +112,7 @@ data class EconomyState(
     val factories: Int = 0,
     val farms: Int = 0,
     val housing: Int = 0,
+    val sectorInvestment: SectorInvestmentState = SectorInvestmentState(),
 ) {
     fun taxRevenue(population: Long): Long =
         (population * 40L * taxRate).toLong()

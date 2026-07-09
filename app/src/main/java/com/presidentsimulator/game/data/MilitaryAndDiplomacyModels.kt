@@ -135,6 +135,8 @@ data class RivalNation(
     val economicPower: Double = 1.0,
     val hasTradeTreaty: Boolean = false,
     val hasNonAggressionPact: Boolean = false,
+    /** Lingering hostility after broken treaties or espionage (0–5). */
+    val grudgeLevel: Int = 0,
 ) {
     val stance: DiplomaticStance
         get() = when {
@@ -184,6 +186,8 @@ data class DiplomacyState(
     val rivals: List<RivalNation> = defaultRivals(),
     val diplomaticInfluence: Int = 50,
     val activeWar: WarState? = null,
+    /** Months until diplomatic actions can repeat (keys: aid_<id>, visit_<id>). */
+    val diplomaticCooldowns: Map<String, Int> = emptyMap(),
 ) {
     fun rivalById(id: String): RivalNation? = rivals.find { it.id == id }
 

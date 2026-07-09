@@ -9,6 +9,8 @@ import com.presidentsimulator.game.data.ProductionState
 import com.presidentsimulator.game.data.NationalPerkEffects
 import com.presidentsimulator.game.data.ParliamentarySupport
 import com.presidentsimulator.game.data.PendingLaw
+import com.presidentsimulator.game.data.SectorInvestment
+import com.presidentsimulator.game.data.awardSectorXp
 import kotlin.math.roundToLong
 
 /**
@@ -383,7 +385,8 @@ class ProductionLawViewModel {
             else -> return state
         }
 
-        return state.copy(
+        val sector = SectorInvestment.sectorForInfrastructure(type) ?: return state
+        return state.awardSectorXp(sector, SectorInvestment.XP_PER_BUILD * amount).copy(
             vitals = state.vitals.copy(budget = state.vitals.budget - cost),
             production = production,
         )

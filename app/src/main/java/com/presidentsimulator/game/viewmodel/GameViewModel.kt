@@ -12,6 +12,8 @@ import com.presidentsimulator.game.data.GameEvent
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.ResearchState
 import com.presidentsimulator.game.data.InfrastructureType
+import com.presidentsimulator.game.data.SectorInvestment
+import com.presidentsimulator.game.data.awardSectorXp
 import com.presidentsimulator.game.data.MissionType
 import com.presidentsimulator.game.data.SaveLoadFeedback
 import com.presidentsimulator.game.data.SecurityProtocol
@@ -679,10 +681,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { diplomacyEngine.sendForeignAid(it, targetCountryId) }
     }
 
+    fun canSendForeignAid(targetCountryId: String): Boolean =
+        DiplomacyViewModel.canSendForeignAid(_state.value, targetCountryId)
+
     fun conductStateVisit(targetCountryId: String) {
         if (_currentActiveEvent.value != null) return
         _state.update { diplomacyEngine.conductStateVisit(it, targetCountryId) }
     }
+
+    fun canConductStateVisit(targetCountryId: String): Boolean =
+        DiplomacyViewModel.canConductStateVisit(_state.value, targetCountryId)
 
     fun runCampaignAction(action: CampaignAction) {
         if (_currentActiveEvent.value != null) return
@@ -837,10 +845,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 InfrastructureType.MINE -> 0.1f * amount
             }
 
-            current.copy(
-                vitals = current.vitals.copy(
-                    budget = current.vitals.budget - cost,
-                    approval = (current.vitals.approval + approvalBump).coerceIn(0f, 100f),
+            val sector = SectorInvestment.sectorForInfrastructure(type)
+            val withSectorXp = if (sector != null) {
+                current.awardSectorXp(sector, SectorInvestment.XP_PER_BUILD * amount)
+            } else {
+                current
+            }
+
+            withSectorXp.copy(
+                vitals = withSectorXp.vitals.copy(
+                    budget = withSectorXp.vitals.budget - cost,
+                    approval = (withSectorXp.vitals.approval + approvalBump).coerceIn(0f, 100f),
                 ),
                 economy = updatedEconomy,
             )

@@ -63,6 +63,7 @@ fun ScienceScreen(
     val research = state.research
     val sciencePerMonth = viewModel.projectedSciencePerTick()
     val activeTech = research.activeTechnology
+    val queuedTech = research.queuedTechnology
 
     Column(modifier = modifier.fillMaxSize().background(NssBackground).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
         NssScreenHeader(
@@ -90,6 +91,7 @@ fun ScienceScreen(
                 SectionTitle("Current Research")
                 CurrentResearchPanel(
                     activeTech = activeTech,
+                    queuedTech = queuedTech,
                     progressPercent = research.progressPercent(),
                     daysRemaining = research.daysRemaining(sciencePerMonth),
                     extraFundingTier = research.extraFundingTier,
@@ -104,9 +106,11 @@ fun ScienceScreen(
                     tech = tech,
                     isUnlocked = research.isUnlocked(tech.id),
                     isActive = research.activeTechId == tech.id,
+                    isQueued = research.queuedTechId == tech.id,
                     prerequisitesMet = research.prerequisitesMet(tech),
                     canStart = viewModel.canStartResearch(tech.id),
                     canUnlock = viewModel.canUnlockTechnology(tech.id),
+                    hasActiveResearch = research.activeTechId != null,
                     onStartResearch = { viewModel.startResearch(tech.id) },
                     onUnlock = { viewModel.unlockTechnology(tech.id) },
                 )
@@ -130,6 +134,7 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun CurrentResearchPanel(
     activeTech: Technology?,
+    queuedTech: Technology?,
     progressPercent: Float,
     daysRemaining: Int,
     extraFundingTier: Int,
@@ -150,7 +155,16 @@ private fun CurrentResearchPanel(
         }
         if (activeTech == null) {
             Text("No active research project", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = NssForeground)
-            Text("Select a technology below to begin.", fontSize = 12.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+            if (queuedTech != null) {
+                Text(
+                    "Queued next: ${queuedTech.name}",
+                    fontSize = 12.sp,
+                    color = NssEmerald,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            } else {
+                Text("Select a technology below to begin.", fontSize = 12.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
+            }
         } else {
             Text(activeTech.name, fontWeight = FontWeight.Black, fontSize = 16.sp, color = NssForeground)
             Text(activeTech.effect.description, fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 4.dp))
@@ -184,6 +198,14 @@ private fun CurrentResearchPanel(
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
             )
+            if (queuedTech != null) {
+                Text(
+                    "Up next: ${queuedTech.name}",
+                    fontSize = 11.sp,
+                    color = NssEmerald,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 }
@@ -193,15 +215,18 @@ private fun TechTreeRow(
     tech: Technology,
     isUnlocked: Boolean,
     isActive: Boolean,
+    isQueued: Boolean,
     prerequisitesMet: Boolean,
     canStart: Boolean,
     canUnlock: Boolean,
+    hasActiveResearch: Boolean,
     onStartResearch: () -> Unit,
     onUnlock: () -> Unit,
 ) {
     val status = when {
         isUnlocked -> "UNLOCKED"
         isActive -> "IN PROGRESS"
+        isQueued -> "QUEUED"
         !prerequisitesMet -> "LOCKED"
         else -> "AVAILABLE"
     }
@@ -237,9 +262,13 @@ private fun TechTreeRow(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            if (!isUnlocked && !isActive) {
+            if (!isUnlocked && !isActive && !isQueued) {
                 Text(
-                    text = if (canStart) "▶ Start Research" else "Cannot start",
+                    text = when {
+                        !canStart -> "Cannot start"
+                        hasActiveResearch -> "⏳ Queue Research"
+                        else -> "▶ Start Research"
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp)
