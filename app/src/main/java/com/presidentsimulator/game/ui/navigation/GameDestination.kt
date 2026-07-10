@@ -12,4 +12,23 @@ sealed class GameDestination(val route: String, val title: String) {
     data object AudioSettings : GameDestination("audio_settings", "Settings")
     data object Analytics : GameDestination("analytics", "Analytics")
     data object Demographics : GameDestination("demographics", "Demographics")
+    data object Cabinet : GameDestination("cabinet", "Cabinet")
+
+    companion object {
+        fun fromRoute(route: String): GameDestination? = when (route) {
+            Dashboard.route -> Dashboard
+            Economy.route -> Economy
+            Military.route -> Military
+            Diplomacy.route -> Diplomacy
+            SecretService.route -> SecretService
+            Science.route -> Science
+            LawsSociety.route -> LawsSociety
+            Governance.route -> Governance
+            AudioSettings.route -> AudioSettings
+            Analytics.route -> Analytics
+            Demographics.route -> Demographics
+            Cabinet.route -> Cabinet
+            else -> null
+        }
+    }
 }

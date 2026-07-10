@@ -64,6 +64,8 @@ object PlayableNationCatalog {
                     academics = 54f,
                 ),
                 nextElectionYear = 2030,
+                cabinet = CabinetEngine.seedInitial(),
+                opposition = OppositionEngine.seedInitial(ideology),
             )
         }
     }

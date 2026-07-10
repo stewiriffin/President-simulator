@@ -48,16 +48,18 @@ class AdvancementViewModel {
         val educationCost = society.educationUpkeep
         val cultureCost = society.cultureUpkeep
 
+        val societyGain = state.cabinet.combinedEffects().societyGainMultiplier
+
         if (budget >= healthCost) {
             budget -= healthCost
-            healthLevel = (healthLevel + forecastLevelDelta(society.healthFunding)).coerceIn(0f, 100f)
+            healthLevel = (healthLevel + forecastLevelDelta(society.healthFunding, societyGain)).coerceIn(0f, 100f)
         } else {
             healthLevel = (healthLevel - UNDERFUNDED_DECAY).coerceIn(0f, 100f)
         }
 
         if (budget >= educationCost) {
             budget -= educationCost
-            educationLevel = (educationLevel + forecastLevelDelta(society.educationFunding))
+            educationLevel = (educationLevel + forecastLevelDelta(society.educationFunding, societyGain))
                 .coerceIn(0f, 100f)
         } else {
             educationLevel = (educationLevel - UNDERFUNDED_DECAY).coerceIn(0f, 100f)
@@ -65,7 +67,7 @@ class AdvancementViewModel {
 
         if (budget >= cultureCost) {
             budget -= cultureCost
-            cultureScore = (cultureScore + forecastLevelDelta(society.cultureFunding))
+            cultureScore = (cultureScore + forecastLevelDelta(society.cultureFunding, societyGain))
                 .coerceIn(0f, 100f)
         } else {
             cultureScore = (cultureScore - UNDERFUNDED_DECAY).coerceIn(0f, 100f)
@@ -300,17 +302,21 @@ class AdvancementViewModel {
         val universityBonus = society.universities * SCIENCE_PER_UNIVERSITY
         val techMult = state.research.combinedEffects.scienceMultiplier
         val religionMult = society.stateReligion.scienceMultiplier
-        return ((base + educationBonus + universityBonus) * techMult * religionMult)
+        val cabinetMult = state.cabinet.combinedEffects().scienceMultiplier
+        return ((base + educationBonus + universityBonus) * techMult * religionMult * cabinetMult)
             .roundToLong()
             .coerceAtLeast(0L)
     }
 
-    fun forecastLevelDelta(funding: Float): Float = when {
-        funding >= 0.75f -> 1.2f
-        funding >= 0.55f -> 0.7f
-        funding >= 0.40f -> 0.3f
-        funding >= 0.25f -> 0.0f
-        else -> -0.8f
+    fun forecastLevelDelta(funding: Float, societyGainMultiplier: Float = 1f): Float {
+        val base = when {
+            funding >= 0.75f -> 1.2f
+            funding >= 0.55f -> 0.7f
+            funding >= 0.40f -> 0.3f
+            funding >= 0.25f -> 0.0f
+            else -> -0.8f
+        }
+        return if (base > 0f) base * societyGainMultiplier else base
     }
 
     fun forecastMinistryText(society: SocietyState, ministry: SocietyMinistry): String {

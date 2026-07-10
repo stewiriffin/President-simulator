@@ -16,6 +16,8 @@ data class DemographicsState(
     val campaignCooldownMonths: Map<String, Int> = emptyMap(),
     /** Opposition momentum during election season — drags blended approval. */
     val oppositionMomentum: Float = 0f,
+    /** Election-season theater: polls, challenger, pending night result. */
+    val election: ElectionSeasonState = ElectionSeasonState(),
 ) {
     fun blendedApproval(): Float =
         (workingClass * SHARE_WORKING) +
@@ -43,4 +45,45 @@ data class DemographicsState(
         const val SHARE_MILITARY = 0.15f
         const val SHARE_ACADEMICS = 0.25f
     }
+}
+
+@Serializable
+data class ElectionPollSnapshot(
+    val year: Int,
+    val month: Int,
+    val playerShare: Float,
+    val challengerShare: Float,
+    val undecided: Float,
+)
+
+@Serializable
+data class ElectionNightResult(
+    val victory: Boolean,
+    val playerShare: Float,
+    val challengerShare: Float,
+    val workingShare: Float,
+    val businessShare: Float,
+    val militaryShare: Float,
+    val academicsShare: Float,
+    val economyOk: Boolean,
+    val stabilityOk: Boolean,
+    val oppositionPenalty: Float,
+    val challengerName: String,
+    val narrative: String,
+)
+
+@Serializable
+data class ElectionSeasonState(
+    val challengerName: String = "",
+    val challengerParty: String = "",
+    val pollHistory: List<ElectionPollSnapshot> = emptyList(),
+    val debatesHeld: Int = 0,
+    val attackAdsRun: Int = 0,
+    val oppositionAttackAds: Int = 0,
+    val pendingNight: ElectionNightResult? = null,
+) {
+    val hasPendingNight: Boolean get() = pendingNight != null
+
+    val latestPoll: ElectionPollSnapshot?
+        get() = pollHistory.lastOrNull()
 }

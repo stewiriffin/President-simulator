@@ -36,10 +36,12 @@ import com.presidentsimulator.game.audio.GameAudioCrisisEffect
 import com.presidentsimulator.game.audio.GameAudioManager
 import com.presidentsimulator.game.audio.playClick
 import com.presidentsimulator.game.ui.GovernanceUNScreen
+import com.presidentsimulator.game.ui.components.ElectionNightDialog
 import com.presidentsimulator.game.ui.components.EventCrisisDialog
 import com.presidentsimulator.game.ui.components.GlobalHud
 import com.presidentsimulator.game.ui.components.MinistryBottomNav
 import com.presidentsimulator.game.ui.components.MissionResultDialog
+import com.presidentsimulator.game.ui.components.MorningBriefingDialog
 import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.TurnSummaryDialog
@@ -55,6 +57,7 @@ import com.presidentsimulator.game.ui.theme.NssPrimary
 import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.ui.screens.AnalyticsScreen
 import com.presidentsimulator.game.ui.screens.ApprovalDemographicsScreen
+import com.presidentsimulator.game.ui.screens.CabinetScreen
 import com.presidentsimulator.game.ui.screens.DiplomacyScreen
 import com.presidentsimulator.game.ui.screens.EconomyScreen
 import com.presidentsimulator.game.ui.screens.CountrySelectScreen
@@ -111,9 +114,9 @@ fun GameNavigation(
                     audio.playClick()
                     showCountrySelect = false
                 },
-                onSelectCountry = { countryId ->
+                onSelectCountry = { countryId, scenarioId ->
                     audio.playClick()
-                    viewModel.startNewGame(countryId)
+                    viewModel.startNewGame(countryId, scenarioId)
                     showCountrySelect = false
                 },
             )
@@ -141,7 +144,7 @@ fun GameNavigation(
     GameAudioBridge(state = state)
     GameAudioCrisisEffect(hasActiveEvent = activeEvent != null)
 
-    // Overlay priority: crisis > war end > missions > turn summary > campaign end
+    // Overlay priority: crisis > election night > war end > missions > turn summary > morning briefing > campaign end
     activeEvent?.let { event ->
         EventCrisisDialog(
             event = event,
@@ -152,7 +155,18 @@ fun GameNavigation(
         )
     }
 
-    if (activeEvent == null) {
+    val electionNight = state.demographics.election.pendingNight
+    if (activeEvent == null && electionNight != null) {
+        ElectionNightDialog(
+            result = electionNight,
+            onConfirm = {
+                audio.playClick()
+                viewModel.confirmElectionNight()
+            },
+        )
+    }
+
+    if (activeEvent == null && electionNight == null) {
         warOutcome?.let { outcome ->
             WarOutcomeDialog(
                 outcome = outcome,
@@ -165,7 +179,7 @@ fun GameNavigation(
     }
 
     val pendingMission = missionResults.firstOrNull()
-    if (activeEvent == null && warOutcome == null && pendingMission != null) {
+    if (activeEvent == null && electionNight == null && warOutcome == null && pendingMission != null) {
         MissionResultDialog(
             mission = pendingMission,
             state = state,
@@ -176,7 +190,7 @@ fun GameNavigation(
         )
     }
 
-    if (activeEvent == null && warOutcome == null && pendingMission == null) {
+    if (activeEvent == null && electionNight == null && warOutcome == null && pendingMission == null) {
         turnSummary?.let { summary ->
             TurnSummaryDialog(
                 summary = summary,
@@ -186,6 +200,30 @@ fun GameNavigation(
                 },
             )
         }
+    }
+
+    if (
+        activeEvent == null &&
+        electionNight == null &&
+        warOutcome == null &&
+        pendingMission == null &&
+        turnSummary == null &&
+        state.agenda.needsBriefing
+    ) {
+        MorningBriefingDialog(
+            agenda = state.agenda,
+            year = state.year,
+            month = state.month,
+            onDismiss = {
+                audio.playClick()
+                viewModel.acknowledgeBriefing()
+            },
+            onJumpToAction = { item ->
+                audio.playClick()
+                viewModel.actOnAgendaItem(item)
+                GameDestination.fromRoute(item.targetRoute)?.let(navigate)
+            },
+        )
     }
 
     if (gameOver) {
@@ -224,6 +262,9 @@ fun GameNavigation(
                 MainDashboardScreen(
                     state = state,
                     onNavigate = navigate,
+                    onSpinHeadline = { viewModel.spinPressHeadline(it) },
+                    onSuppressHeadline = { viewModel.suppressPressHeadline(it) },
+                    onDisasterResponse = { viewModel.allocateDisasterResponse(it) },
                 )
             }
             composable(GameDestination.Economy.route) {
@@ -255,6 +296,9 @@ fun GameNavigation(
             }
             composable(GameDestination.Demographics.route) {
                 ApprovalDemographicsScreen(state = state, viewModel = viewModel)
+            }
+            composable(GameDestination.Cabinet.route) {
+                CabinetScreen(state = state, viewModel = viewModel)
             }
         }
 

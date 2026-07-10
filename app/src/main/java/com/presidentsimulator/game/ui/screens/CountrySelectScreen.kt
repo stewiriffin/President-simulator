@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import coil.compose.AsyncImage
 import com.presidentsimulator.game.data.PlayableNationCatalog
+import com.presidentsimulator.game.data.ScenarioCatalog
 import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
 import com.presidentsimulator.game.ui.components.HeroHeaderScrim
 import com.presidentsimulator.game.ui.components.NssCardShape
@@ -59,10 +60,13 @@ import com.presidentsimulator.game.ui.theme.NssPrimary
 fun CountrySelectScreen(
     nations: List<PlayableNationCatalog.NationDefinition>,
     onBack: () -> Unit,
-    onSelectCountry: (String) -> Unit,
+    onSelectCountry: (countryId: String, scenarioId: String) -> Unit,
 ) {
     var selectedIndex by remember(nations) { mutableIntStateOf(0) }
+    var scenarioIndex by remember { mutableIntStateOf(0) }
     val nation = nations.getOrElse(selectedIndex) { nations.first() }
+    val scenarios = remember { ScenarioCatalog.ALL }
+    val scenario = scenarios.getOrElse(scenarioIndex) { scenarios.first() }
     val layout = rememberNssLayoutSpec()
 
     Column(
@@ -224,10 +228,10 @@ fun CountrySelectScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(72.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
@@ -237,12 +241,46 @@ fun CountrySelectScreen(
                 )
                 .padding(Dimens.SpacingMedium),
         ) {
+            Text(
+                "SCENARIO",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                scenarios.forEachIndexed { index, pack ->
+                    val selected = index == scenarioIndex
+                    Column(
+                        modifier = Modifier
+                            .clip(NssCardShape)
+                            .background(if (selected) NssPrimary else NssPrimary.copy(alpha = 0.25f))
+                            .clickable { scenarioIndex = index }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        Text(pack.title, color = NssOnPhoto, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(pack.difficulty.displayName, color = NssOnPhoto.copy(alpha = 0.75f), fontSize = 9.sp)
+                    }
+                }
+            }
+            Text(
+                scenario.tagline,
+                fontSize = 11.sp,
+                color = NssMutedForeground,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(NssCardShape)
                     .background(Brush.horizontalGradient(listOf(NssAccent, Color(0xFFD97706))))
-                    .clickable { onSelectCountry(nation.id) }
+                    .clickable { onSelectCountry(nation.id, scenario.id) }
                     .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,

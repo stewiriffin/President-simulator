@@ -106,6 +106,7 @@ object GameIcons {
         GameDestination.AudioSettings -> Icons.AutoMirrored.Filled.VolumeUp
         GameDestination.Analytics -> Icons.Default.Timeline
         GameDestination.Demographics -> Icons.Default.Groups
+        GameDestination.Cabinet -> Icons.Default.AccountBalance
     }
 
     fun forTradeCommodity(commodity: TradeCommodity): ImageVector = when (commodity) {

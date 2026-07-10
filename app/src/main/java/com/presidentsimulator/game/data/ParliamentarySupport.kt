@@ -15,7 +15,8 @@ object ParliamentarySupport {
             LawCategory.MILITARY ->
                 demographics.military * 0.60f + demographics.businessElite * 0.40f
         }
-        return (cohortVoice * 0.65f + state.vitals.approval * 0.35f).coerceIn(0f, 100f)
+        return (cohortVoice * 0.65f + state.vitals.approval * 0.35f - state.opposition.lawSupportPenalty())
+            .coerceIn(0f, 100f)
     }
 
     fun passesImmediately(state: GameState, law: Law): Boolean =

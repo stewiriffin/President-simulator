@@ -14,12 +14,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -53,28 +58,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.presidentsimulator.game.data.AgendaBuilder
+import com.presidentsimulator.game.data.AgendaItem
+import com.presidentsimulator.game.data.AgendaPriority
 import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.data.summaryLine
+import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
+import com.presidentsimulator.game.ui.components.HeroHeaderScrim
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssCardShape
 import com.presidentsimulator.game.ui.components.NssGameBar
-import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
-import com.presidentsimulator.game.ui.components.HeroHeaderScrim
-import com.presidentsimulator.game.ui.components.StripHeaderBottomScrim
+import com.presidentsimulator.game.ui.components.DisasterResponseSection
 import com.presidentsimulator.game.ui.components.NssPhotoHeader
-import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
-import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import com.presidentsimulator.game.ui.components.PressDeskSection
+import com.presidentsimulator.game.ui.components.StripHeaderBottomScrim
+import com.presidentsimulator.game.data.ResponseFocus
 import com.presidentsimulator.game.ui.components.collectAlertCount
-import com.presidentsimulator.game.ui.components.collectAlerts
 import com.presidentsimulator.game.ui.components.formatCompactMil
 import com.presidentsimulator.game.ui.components.formatCompactMoney
+import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import com.presidentsimulator.game.ui.components.rememberNssLayoutSpec
 import com.presidentsimulator.game.ui.navigation.GameDestination
-import com.presidentsimulator.game.ui.theme.NssAccent
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import com.presidentsimulator.game.ui.theme.Dimens
+import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
 import com.presidentsimulator.game.ui.theme.NssEmerald
@@ -96,6 +102,9 @@ import kotlin.math.roundToInt
 fun MainDashboardScreen(
     state: GameState,
     onNavigate: (GameDestination) -> Unit,
+    onSpinHeadline: (String) -> Unit = {},
+    onSuppressHeadline: (String) -> Unit = {},
+    onDisasterResponse: (ResponseFocus) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val layout = rememberNssLayoutSpec()
@@ -105,7 +114,7 @@ fun MainDashboardScreen(
     val stability = (100f - state.internalSecurity.instabilityScore).coerceIn(0f, 100f)
     val milPower = state.effectiveCombatStrength.roundToInt()
     val alertCount = collectAlertCount(state)
-    val situations = remember(state) { buildSituations(state) }
+    val situations = remember(state) { agendaSituations(state) }
     val quarter = ((state.month - 1) / 3) + 1
 
     Column(
@@ -247,8 +256,8 @@ fun MainDashboardScreen(
 
             if (situations.isNotEmpty()) {
                 DashboardSection(
-                    title = "Active Situations",
-                    subtitle = "${situations.size.coerceAtMost(3)} require action",
+                    title = "Presidential Agenda",
+                    subtitle = "${situations.size} file(s) · streak ${state.agenda.criticalAddressedStreak}",
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         situations.take(3).forEach { situation ->
@@ -258,6 +267,29 @@ fun MainDashboardScreen(
                             )
                         }
                     }
+                }
+            }
+
+            DashboardSection(
+                title = "Press Desk",
+                subtitle = state.press.summaryLine(),
+            ) {
+                PressDeskSection(
+                    state = state,
+                    onSpin = onSpinHeadline,
+                    onSuppress = onSuppressHeadline,
+                )
+            }
+
+            if (state.disaster.hasActive || state.disaster.readiness < 40f) {
+                DashboardSection(
+                    title = "Disaster Command",
+                    subtitle = state.disaster.summaryLine(),
+                ) {
+                    DisasterResponseSection(
+                        state = state,
+                        onAllocate = onDisasterResponse,
+                    )
                 }
             }
 
@@ -313,6 +345,7 @@ fun MainDashboardScreen(
                 val departments = listOf(
                     Triple("Science", Icons.Default.Science, scienceMinistryBadge(state)) to GameDestination.Science,
                     Triple("Laws", Icons.Default.AccountBalance, state.legal.pendingLaws.size.takeIf { it > 0 }?.let { "$it Pending" }) to GameDestination.LawsSociety,
+                    Triple("Cabinet", Icons.Default.Groups, state.cabinet.vacancyCount.takeIf { it > 0 }?.let { "$it Vacant" }) to GameDestination.Cabinet,
                     Triple("United Nations", Icons.Default.Public, if (state.governance.activeResolution != null) "Vote" else null) to GameDestination.Governance,
                     Triple("Analytics", Icons.Default.Analytics, null) to GameDestination.Analytics,
                     Triple("Demographics", Icons.Default.Groups, null) to GameDestination.Demographics,
@@ -481,76 +514,38 @@ private data class DashboardSituation(
     val accentColor: Color,
 )
 
-private fun buildSituations(state: GameState): List<DashboardSituation> {
-    val items = mutableListOf<DashboardSituation>()
-    state.diplomacy.activeWar?.let { war ->
-        val name = state.diplomacy.rivalById(war.targetCountryId)?.name ?: "enemy forces"
-        items += DashboardSituation(
-            severity = "CRISIS",
-            emoji = "🚨",
-            title = "War Against $name!",
-            description = "Active conflict requires military response this turn.",
-            imageUrl = NssCardImages.INFANTRY,
-            action = "⚔ Deploy",
-            destination = GameDestination.Military,
-            accentColor = NssRed,
+private fun agendaSituations(state: GameState): List<DashboardSituation> {
+    return AgendaBuilder.dashboardItems(state).map { item ->
+        val destination = GameDestination.fromRoute(item.targetRoute) ?: GameDestination.Dashboard
+        val (severity, emoji, accent) = when (item.priority) {
+            AgendaPriority.CRITICAL -> Triple("CRISIS", "🚨", NssRed)
+            AgendaPriority.HIGH -> Triple("WARNING", "⚠️", NssAccent)
+            AgendaPriority.MEDIUM -> Triple("WARNING", "ℹ️", NssPrimary)
+            AgendaPriority.OPPORTUNITY -> Triple("OPPORTUNITY", "🚀", NssEmerald)
+        }
+        DashboardSituation(
+            severity = severity,
+            emoji = emoji,
+            title = item.title,
+            description = item.detail,
+            imageUrl = agendaImage(item),
+            action = item.recommendedAction,
+            destination = destination,
+            accentColor = accent,
         )
     }
-    if (state.internalSecurity.coupRisk >= 60f) {
-        items += DashboardSituation(
-            severity = "WARNING",
-            emoji = "⚠️",
-            title = "Coup Risk Elevated",
-            description = "Instability at ${state.internalSecurity.coupRisk.roundToInt()}% — review domestic policy.",
-            imageUrl = NssCardImages.PARLIAMENT,
-            action = "💬 Review",
-            destination = GameDestination.LawsSociety,
-            accentColor = NssAccent,
-        )
-    }
-    if (state.production.foodShortage) {
-        items += DashboardSituation(
-            severity = "WARNING",
-            emoji = "⚠️",
-            title = "Food Shortages",
-            description = "Agricultural shortfall is driving public unrest nationwide.",
-            imageUrl = NssCardImages.AGRICULTURE,
-            action = "💬 Economy",
-            destination = GameDestination.Economy,
-            accentColor = NssAccent,
-        )
-    }
-    if (state.netIncome > 0 && items.size < 3) {
-        items += DashboardSituation(
-            severity = "OPPORTUNITY",
-            emoji = "🚀",
-            title = "Treasury Surplus!",
-            description = "Positive cash flow — invest in growth sectors now.",
-            imageUrl = NssCardImages.TECHNOLOGY,
-            action = "⬆ Invest",
-            destination = GameDestination.Economy,
-            accentColor = NssEmerald,
-        )
-    }
-    collectAlerts(state).forEach { (level, message) ->
-        if (items.size >= 3) return@forEach
-        if (items.any { it.title == message }) return@forEach
-        items += DashboardSituation(
-            severity = when (level) {
-                "CRIT" -> "CRISIS"
-                "WARN" -> "WARNING"
-                else -> "OPPORTUNITY"
-            },
-            emoji = if (level == "CRIT") "🚨" else "ℹ️",
-            title = message.take(36),
-            description = message,
-            imageUrl = NssCardImages.BANNER_FOREIGN,
-            action = "Respond",
-            destination = GameDestination.Dashboard,
-            accentColor = if (level == "CRIT") NssRed else NssAccent,
-        )
-    }
-    return items
+}
+
+private fun agendaImage(item: AgendaItem): String = when (item.targetRoute) {
+    "military" -> NssCardImages.INFANTRY
+    "economy" -> NssCardImages.BANNER_ECONOMY
+    "secret_service" -> NssCardImages.BANNER_FOREIGN
+    "demographics" -> NssCardImages.PARLIAMENT
+    "governance" -> NssCardImages.BANNER_FOREIGN
+    "laws_society" -> NssCardImages.PARLIAMENT
+    "science" -> NssCardImages.TECHNOLOGY
+    "diplomacy" -> NssCardImages.BANNER_FOREIGN
+    else -> NssCardImages.MAP
 }
 
 @Composable

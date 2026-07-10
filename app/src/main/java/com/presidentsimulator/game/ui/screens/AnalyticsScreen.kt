@@ -31,12 +31,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.HistoricalSnapshot
+import com.presidentsimulator.game.data.LegacyPillar
+import com.presidentsimulator.game.data.LegacyTone
 import com.presidentsimulator.game.ui.components.NssCardImages
 import com.presidentsimulator.game.ui.components.NssCardShape
+import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.NssGradients
 import com.presidentsimulator.game.ui.components.NssPanel
 import com.presidentsimulator.game.ui.components.NssScreenHeader
 import com.presidentsimulator.game.ui.components.nssMinistryScrollPadding
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -45,6 +49,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import com.presidentsimulator.game.ui.theme.Dimens
 import com.presidentsimulator.game.ui.theme.NssBackground
 import com.presidentsimulator.game.ui.theme.NssBorder
+import com.presidentsimulator.game.ui.theme.NssAccent
 import com.presidentsimulator.game.ui.theme.NssEmerald
 import com.presidentsimulator.game.ui.theme.NssForeground
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
@@ -90,6 +95,8 @@ fun AnalyticsScreen(
                 .padding(Dimens.ContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            LegacyLedgerPanel(state = state)
+
             NssPanel(modifier = Modifier.fillMaxWidth()) {
                 Text("SYSTEM CONTROLS", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
                 Text(
@@ -386,6 +393,85 @@ private fun LineChartCard(
                 fontSize = 10.sp,
                 color = NssMutedForeground
             )
+        }
+    }
+}
+
+@Composable
+private fun LegacyLedgerPanel(state: GameState) {
+    val legacy = state.legacy
+    val scores = legacy.scores
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "PRESIDENTIAL LEGACY",
+            fontWeight = FontWeight.Black,
+            fontSize = 12.sp,
+            color = NssPrimary,
+            letterSpacing = 2.sp,
+        )
+        Text(
+            "${scores.grade} · overall ${scores.overall}",
+            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            color = NssForeground,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Text(
+            "Peak approval ${legacy.peakApproval.roundToInt()}% · floor ${legacy.lowestApproval.roundToInt()}% · " +
+                "elections ${legacy.electionsWon} · wars ${legacy.warsWon}W/${legacy.warsLost}L · laws ${legacy.lawsEnacted}",
+            fontSize = 11.sp,
+            color = NssMutedForeground,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        LegacyPillar.entries.forEach { pillar ->
+            val value = when (pillar) {
+                LegacyPillar.PROSPERITY -> scores.prosperity
+                LegacyPillar.SECURITY -> scores.security
+                LegacyPillar.DIPLOMACY -> scores.diplomacy
+                LegacyPillar.SOCIETY -> scores.society
+                LegacyPillar.MANDATE -> scores.mandate
+            }
+            Text(pillar.displayName, fontSize = 11.sp, color = NssMutedForeground)
+            NssGameBar(
+                percent = value.toFloat(),
+                color = when {
+                    value >= 65 -> NssEmerald
+                    value >= 45 -> NssPrimary
+                    else -> NssRed
+                },
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+        if (legacy.recentEntries.isNotEmpty()) {
+            Text(
+                "CHAPTERS",
+                fontWeight = FontWeight.Black,
+                fontSize = 11.sp,
+                color = NssPrimary,
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            )
+            legacy.recentEntries.take(6).forEach { entry ->
+                val toneColor = when (entry.tone) {
+                    LegacyTone.TRIUMPH -> NssEmerald
+                    LegacyTone.MILESTONE -> NssPrimary
+                    LegacyTone.TURNING_POINT -> NssAccent
+                    LegacyTone.STAIN, LegacyTone.TRAGEDY -> NssRed
+                }
+                Text(
+                    "${GameState.monthName(entry.month)} ${entry.year} · ${entry.title}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = toneColor,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Text(
+                    entry.detail,
+                    fontSize = 11.sp,
+                    color = NssMutedForeground,
+                )
+            }
         }
     }
 }

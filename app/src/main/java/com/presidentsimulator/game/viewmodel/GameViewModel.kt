@@ -5,6 +5,19 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.presidentsimulator.game.data.ActiveCrisisState
+import com.presidentsimulator.game.data.AgendaBuilder
+import com.presidentsimulator.game.data.AgendaItem
+import com.presidentsimulator.game.data.CabinetEngine
+import com.presidentsimulator.game.data.CabinetPortfolio
+import com.presidentsimulator.game.data.DisasterEngine
+import com.presidentsimulator.game.data.ScenarioCatalog
+import com.presidentsimulator.game.data.SpeechEngine
+import com.presidentsimulator.game.data.SpeechTheme
+import com.presidentsimulator.game.data.TermEngine
+import com.presidentsimulator.game.data.LegacyLedger
+import com.presidentsimulator.game.data.OppositionEngine
+import com.presidentsimulator.game.data.PressDesk
+import com.presidentsimulator.game.data.ResponseFocus
 import com.presidentsimulator.game.data.DeploymentStatus
 import com.presidentsimulator.game.data.EventChoice
 import com.presidentsimulator.game.data.EventConsequence
@@ -111,6 +124,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (_turnSummary.value != null) return
         if (_missionResults.value.isNotEmpty()) return
         if (_warOutcome.value != null) return
+        if (_state.value.agenda.needsBriefing) return
+        if (_state.value.demographics.election.hasPendingNight) return
 
         val before = _state.value
         val beforeMissions = before.espionage.activeMissions.associateBy { it.id }
@@ -152,6 +167,27 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             // Lingering crisis aftermath (strikes, epidemics, etc.).
             next = processCrisisTick(next)
 
+            // National press cycle — headlines and sentiment pull.
+            next = PressDesk.processMonth(next, random)
+
+            // Cabinet tenure, scandals, resignations, and ministry effects.
+            next = CabinetEngine.processMonth(next, random)
+
+            // Named parties, chamber pressure, and opposition tactics.
+            next = OppositionEngine.processMonth(next, random)
+
+            // Disaster spawn, escalation, and response fallout.
+            next = DisasterEngine.processMonth(next, random)
+
+            // Speech cooldowns.
+            next = SpeechEngine.tickCooldowns(next)
+
+            // Term-limit / soft-defeat pressure.
+            next = TermEngine.processMonth(next)
+            if (next.gameOver.isGameOver) {
+                return@update next
+            }
+
             // Science generation, social ministry funding, and health demographics.
             next = advancementEngine.processSocietyTick(next)
 
@@ -172,12 +208,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             // Final ledger step: append KPI snapshot to the rolling history window.
             next = analyticsEngine.recordHistoricalSnapshot(next)
+            next = LegacyLedger.processMonth(before, next)
+            next = next.copy(agenda = AgendaBuilder.applyMonthlyAgenda(next.agenda, next))
             next
         }
 
         val after = _state.value
         diplomacyEngine.consumeLastResolvedWar()?.let { outcome ->
             _warOutcome.value = outcome
+            _state.update { LegacyLedger.recordWarOutcome(it, outcome.victory, outcome.targetName) }
             pauseTimeAdvance()
         }
 
@@ -202,6 +241,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     beforePending = beforePending,
                 ),
             )
+        } else if (after.agenda.needsBriefing) {
+            pauseTimeAdvance()
         }
 
         if (after.gameOver.isGameOver) {
@@ -215,6 +256,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             if (newlyResolved.isNotEmpty()) {
                 _missionResults.value = _missionResults.value + newlyResolved
+                pauseTimeAdvance()
+            }
+
+            if (after.demographics.election.hasPendingNight) {
                 pauseTimeAdvance()
             }
 
@@ -284,6 +329,38 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (after.trade.activeDeals.isNotEmpty()) {
             lines += "Trade contracts active: ${after.trade.activeDeals.size}"
+        }
+        after.agenda.resolvedLastMonth.take(2).forEach { id ->
+            lines += "Agenda cleared: ${id.replace('_', ' ')}"
+        }
+        if (after.agenda.criticalAddressedStreak >= 3) {
+            lines += "Critical-response streak: ${after.agenda.criticalAddressedStreak} months."
+        }
+        if (after.agenda.items.isNotEmpty()) {
+            lines += "Morning briefing: ${after.agenda.items.size} file(s) on the desk."
+        }
+        if (after.press.lastDeskNote.isNotBlank()) {
+            lines += "Press: ${after.press.lastDeskNote}"
+        } else if (after.press.hostileCount > 0) {
+            lines += "Press desk: ${after.press.hostileCount} hostile headline(s)."
+        }
+        if (after.cabinet.vacancyCount > 0) {
+            lines += "Cabinet: ${after.cabinet.vacancyCount} vacant seat(s)."
+        } else if (after.cabinet.lastCabinetNote.isNotBlank()) {
+            lines += "Cabinet: ${after.cabinet.lastCabinetNote}"
+        }
+        if (after.opposition.lastOppositionAction.isNotBlank()) {
+            lines += "Opposition: ${after.opposition.lastOppositionAction}"
+        }
+        after.disaster.active?.let { d ->
+            lines += "Disaster: ${d.type.displayName} · ${d.stageLabel} (${d.severity.roundToInt()})"
+        } ?: run {
+            if (after.disaster.lastCommandNote.isNotBlank() && after.disaster.disastersHandled + after.disaster.disastersMismanaged > 0) {
+                lines += "Disaster desk: ${after.disaster.lastCommandNote}"
+            }
+        }
+        if (after.legacy.lastLegacyNote.isNotBlank()) {
+            lines += "Legacy: ${after.legacy.summaryLine()}"
         }
         return lines.take(8)
     }
@@ -573,6 +650,104 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearTurnSummary() {
         _turnSummary.value = null
+        if (_state.value.agenda.needsBriefing) {
+            pauseTimeAdvance()
+        }
+    }
+
+    fun acknowledgeBriefing() {
+        _state.update { current ->
+            if (!current.agenda.needsBriefing) return@update current
+            current.copy(
+                agenda = current.agenda.copy(
+                    acknowledgedMonthKey = current.agenda.monthKey,
+                ),
+            )
+        }
+    }
+
+    fun actOnAgendaItem(item: AgendaItem) {
+        _state.update { current ->
+            val acted = (current.agenda.actedItemIds + item.id).distinct().takeLast(24)
+            current.copy(
+                agenda = current.agenda.copy(
+                    actedItemIds = acted,
+                    acknowledgedMonthKey = current.agenda.monthKey,
+                ),
+            )
+        }
+    }
+
+    fun confirmElectionNight() {
+        _state.update { demographicsEngine.confirmElectionNight(it) }
+        if (_state.value.gameOver.isGameOver) {
+            pauseTimeAdvance()
+        }
+    }
+
+    fun spinPressHeadline(headlineId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { PressDesk.spinHeadline(it, headlineId) }
+    }
+
+    fun suppressPressHeadline(headlineId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { PressDesk.suppressHeadline(it, headlineId) }
+    }
+
+    fun appointCabinetCandidate(candidateId: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { CabinetEngine.appointCandidate(it, candidateId) }
+    }
+
+    fun fireCabinetMinister(portfolio: CabinetPortfolio) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { CabinetEngine.fireMinister(it, portfolio) }
+    }
+
+    fun reshuffleCabinetCandidates() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { CabinetEngine.reshuffleCandidates(it) }
+    }
+
+    fun negotiateWithOpposition() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { OppositionEngine.negotiate(it) }
+    }
+
+    fun smearOpposition() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { OppositionEngine.smear(it) }
+    }
+
+    fun concedeToOpposition() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { OppositionEngine.concedePlatform(it) }
+    }
+
+    fun allocateDisasterResponse(focus: ResponseFocus) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { DisasterEngine.allocateResponse(it, focus) }
+    }
+
+    fun deliverSpeech(theme: SpeechTheme) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { SpeechEngine.deliverSpeech(it, theme) }
+    }
+
+    fun holdPressConference() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { SpeechEngine.holdPressConference(it) }
+    }
+
+    fun nameSuccessor(name: String) {
+        if (_currentActiveEvent.value != null) return
+        _state.update { TermEngine.nameSuccessor(it, name) }
+    }
+
+    fun extendTermLimit() {
+        if (_currentActiveEvent.value != null) return
+        _state.update { TermEngine.extendTermLimit(it) }
     }
 
     fun continueGame() {
@@ -585,8 +760,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun playableNations(): List<PlayableNationCatalog.NationDefinition> =
         PlayableNationCatalog.all()
 
-    fun startNewGame(countryId: String = "veltra") {
-        _state.value = GameState.initial(countryId)
+    fun startNewGame(countryId: String = "veltra", scenarioId: String = "standard") {
+        val seeded = ScenarioCatalog.apply(GameState.initial(countryId), scenarioId)
+        _state.value = seeded
         _currentActiveEvent.value = null
         _turnSummary.value = null
         _missionResults.value = emptyList()
@@ -777,6 +953,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     _turnSummary.value != null ||
                     _missionResults.value.isNotEmpty() ||
                     _warOutcome.value != null ||
+                    _state.value.agenda.needsBriefing ||
+                    _state.value.demographics.election.hasPendingNight ||
                     _state.value.gameOver.isGameOver
                 if (!blocked) {
                     advanceTimeTick()

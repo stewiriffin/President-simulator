@@ -39,8 +39,11 @@ import com.presidentsimulator.game.data.Ideology
 import com.presidentsimulator.game.data.Law
 import com.presidentsimulator.game.data.LawCatalog
 import com.presidentsimulator.game.data.LawCategory
+import com.presidentsimulator.game.data.OppositionEngine
 import com.presidentsimulator.game.data.SocietyMinistry
 import com.presidentsimulator.game.data.StateReligion
+import com.presidentsimulator.game.data.GameState
+import com.presidentsimulator.game.ui.components.NssGameBar
 import com.presidentsimulator.game.ui.components.CardHeaderBottomScrim
 import com.presidentsimulator.game.ui.components.NssBadge
 import com.presidentsimulator.game.ui.components.NssCardImages
@@ -65,6 +68,7 @@ import com.presidentsimulator.game.ui.theme.NssGameCard
 import com.presidentsimulator.game.ui.theme.NssMutedForeground
 import com.presidentsimulator.game.ui.theme.NssOnPhoto
 import com.presidentsimulator.game.ui.theme.NssPrimary
+import com.presidentsimulator.game.ui.theme.NssRed
 import com.presidentsimulator.game.viewmodel.AdvancementViewModel
 import com.presidentsimulator.game.viewmodel.GameViewModel
 import com.presidentsimulator.game.data.ParliamentarySupport
@@ -78,6 +82,7 @@ private val policyTabs = listOf(
     PolicyTab("CONSTITUTION", LawCategory.MILITARY),
     PolicyTab("ECONOMY", LawCategory.ECONOMIC),
     PolicyTab("SOCIAL", LawCategory.SOCIAL),
+    PolicyTab("PARLIAMENT", null),
     PolicyTab("SOCIETY", null),
 )
 
@@ -125,6 +130,19 @@ fun LawsScreen(
             ) {
                 item { IdeologyPanel(state = state, viewModel = viewModel) }
                 item { SocietyMinistriesPanel(state = state, viewModel = viewModel) }
+            }
+        } else if (selectedTab == "PARLIAMENT") {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = Dimens.ContentPadding,
+                    end = Dimens.ContentPadding,
+                    top = Dimens.ContentPadding,
+                    bottom = Dimens.ContentPadding + Dimens.MinistryScrollBottomPadding,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { OppositionChamberPanel(state = state, viewModel = viewModel) }
             }
         } else {
             LazyColumn(
@@ -176,8 +194,171 @@ fun LawsScreen(
 }
 
 @Composable
+private fun OppositionChamberPanel(
+    state: GameState,
+    viewModel: GameViewModel,
+) {
+    val opp = state.opposition
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("CHAMBER", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        Text(
+            text = opp.summaryLine(),
+            fontSize = 12.sp,
+            color = NssForeground,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Text(
+            text = if (opp.hasMajority) {
+                "Majority margin +${opp.majorityMargin} seats"
+            } else {
+                "MINORITY GOVERNMENT — bills face a ${opp.lawSupportPenalty().roundToInt()}pt support penalty"
+            },
+            fontSize = 11.sp,
+            color = if (opp.hasMajority) NssEmerald else NssRed,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (opp.filibusterActive) {
+            Text(
+                "Filibuster active · ${opp.filibusterMonths} mo left",
+                fontSize = 11.sp,
+                color = NssAccent,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (opp.noConfidenceHeat > 0f) {
+            Text("No-confidence heat", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 8.dp))
+            NssGameBar(percent = opp.noConfidenceHeat, color = NssRed)
+        }
+        if (opp.lastOppositionAction.isNotBlank()) {
+            Text(
+                opp.lastOppositionAction,
+                fontSize = 11.sp,
+                color = NssMutedForeground,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        if (opp.lastPlayerCounter.isNotBlank()) {
+            Text(
+                "Your last move: ${opp.lastPlayerCounter}",
+                fontSize = 11.sp,
+                color = NssPrimary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+
+    opp.parties.sortedByDescending { it.seats }.forEach { party ->
+        NssPanel(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (party.isRuling) "RULING" else "OPPOSITION",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (party.isRuling) NssEmerald else NssAccent,
+                    )
+                    Text(party.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
+                    Text(
+                        "${party.leaderName} · ${party.lean.displayName}",
+                        fontSize = 11.sp,
+                        color = NssMutedForeground,
+                    )
+                }
+                Text(
+                    "${party.seats}",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp,
+                    color = NssForeground,
+                )
+            }
+            Text("Popularity ${party.popularity.roundToInt()}%", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 6.dp))
+            NssGameBar(percent = party.popularity, color = if (party.isRuling) NssEmerald else NssAccent)
+            if (!party.isRuling) {
+                Text(
+                    "Hostility ${party.hostility.roundToInt()}%",
+                    fontSize = 11.sp,
+                    color = if (party.hostility >= 60f) NssRed else NssMutedForeground,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                NssGameBar(percent = party.hostility, color = NssRed)
+            }
+            if (party.platformTags.isNotEmpty()) {
+                Text(
+                    party.platformTags.joinToString(" · "),
+                    fontSize = 10.sp,
+                    color = NssMutedForeground,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+    }
+
+    NssPanel(modifier = Modifier.fillMaxWidth()) {
+        Text("COUNTERMOVES", fontWeight = FontWeight.Black, fontSize = 12.sp, color = NssPrimary, letterSpacing = 2.sp)
+        val canNegotiate = opp.negotiateCooldownMonths == 0 && state.vitals.budget >= OppositionEngine.NEGOTIATE_COST
+        val canSmear = opp.smearCooldownMonths == 0 && state.vitals.budget >= OppositionEngine.SMEAR_COST
+        val canConcede = opp.concessionCooldownMonths == 0 && state.vitals.budget >= OppositionEngine.CONCESSION_COST
+        CounterMoveButton(
+            label = when {
+                opp.negotiateCooldownMonths > 0 -> "Negotiate · ${opp.negotiateCooldownMonths}mo"
+                else -> "Negotiate (${OppositionEngine.NEGOTIATE_COST.toBudgetString()})"
+            },
+            enabled = canNegotiate,
+            onClick = { viewModel.negotiateWithOpposition() },
+        )
+        CounterMoveButton(
+            label = when {
+                opp.smearCooldownMonths > 0 -> "Smear · ${opp.smearCooldownMonths}mo"
+                else -> "Smear leader (${OppositionEngine.SMEAR_COST.toBudgetString()})"
+            },
+            enabled = canSmear,
+            onClick = { viewModel.smearOpposition() },
+        )
+        CounterMoveButton(
+            label = when {
+                opp.concessionCooldownMonths > 0 -> "Concede · ${opp.concessionCooldownMonths}mo"
+                else -> "Concede platform (${OppositionEngine.CONCESSION_COST.toBudgetString()})"
+            },
+            enabled = canConcede,
+            onClick = { viewModel.concedeToOpposition() },
+        )
+        if (opp.oppositionLog.isNotEmpty()) {
+            Text("RECENT", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 10.dp))
+            opp.oppositionLog.takeLast(5).asReversed().forEach { line ->
+                Text("• $line", fontSize = 11.sp, color = NssMutedForeground, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CounterMoveButton(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(NssCardShape)
+            .background(if (enabled) NssPrimary else NssMutedForeground.copy(alpha = 0.35f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 10.dp),
+        color = NssOnPhoto,
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp,
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
 private fun IdeologyPanel(
-    state: com.presidentsimulator.game.data.GameState,
+    state: GameState,
     viewModel: GameViewModel,
 ) {
     NssPanel(modifier = Modifier.fillMaxWidth()) {

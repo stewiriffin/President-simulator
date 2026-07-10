@@ -32,6 +32,24 @@ data class GameState(
     val playerNation: PlayerNation = PlayerNation(),
     /** Pending crisis dialog and/or multi-month aftermath. */
     val crisis: ActiveCrisisState = ActiveCrisisState(),
+    /** Monthly presidential agenda / morning briefing. */
+    val agenda: AgendaState = AgendaState(),
+    /** National press desk — headlines and media sentiment. */
+    val press: PressState = PressState(),
+    /** Appointed cabinet ministers and shortlist. */
+    val cabinet: CabinetState = CabinetState(),
+    /** Named parties, chamber seats, and opposition tactics. */
+    val opposition: OppositionState = OppositionState(),
+    /** Active natural/industrial disasters and response command. */
+    val disaster: DisasterState = DisasterState(),
+    /** Presidential legacy ledger — chapters and pillar scores. */
+    val legacy: LegacyState = LegacyState(),
+    /** Challenge scenario applied at new game. */
+    val scenario: ScenarioState = ScenarioState(),
+    /** Speeches and press conferences. */
+    val speech: SpeechState = SpeechState(),
+    /** Term limits, succession, and soft-defeat pressure. */
+    val term: TermState = TermState(),
 ) {
     val dateLabel: String
         get() = "${monthName(month)} $year"
@@ -52,7 +70,7 @@ data class GameState(
             production.lastGoodsRevenue +
             society.tourismIncome -
             economy.totalExpenses -
-            military.monthlyUpkeep -
+            (military.monthlyUpkeep * cabinet.combinedEffects().militaryUpkeepMultiplier).toLong() -
             legal.totalUpkeep -
             internalSecurity.monthlyUpkeep
 
@@ -65,6 +83,7 @@ data class GameState(
             var strength = military.combatStrength *
                 research.combinedEffects.militaryStrengthMultiplier *
                 society.stateReligion.militaryMultiplier *
+                cabinet.combinedEffects().militaryStrengthMultiplier *
                 perk
             if (governance.nuclearEmbargoActive) {
                 strength *= 0.88
@@ -75,12 +94,13 @@ data class GameState(
             return strength
         }
 
-    /** Global production multiplier from laws, tech, and religion. */
+    /** Global production multiplier from laws, tech, religion, and cabinet. */
     val effectiveProductionMultiplier: Float
         get() = legal.combinedProductionModifier *
             research.combinedEffects.productionMultiplier *
             society.stateReligion.productionMultiplier *
-            economy.sectorInvestment.productionMultiplier()
+            economy.sectorInvestment.productionMultiplier() *
+            cabinet.combinedEffects().productionMultiplier
 
     companion object {
         fun initial(countryId: String = "veltra"): GameState =
