@@ -695,6 +695,14 @@ private fun TradeTab(
                             fontSize = 11.sp,
                             color = NssMutedForeground,
                         )
+                        if (deal.missedDeliveries > 0) {
+                            Text(
+                                "At risk (${deal.missedDeliveries}/${com.presidentsimulator.game.data.TradeDeal.MAX_MISSED_DELIVERIES} misses)",
+                                fontSize = 10.sp,
+                                color = NssAccent,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                     Text(
                         "CANCEL",

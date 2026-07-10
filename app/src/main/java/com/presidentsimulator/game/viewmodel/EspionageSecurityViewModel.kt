@@ -29,7 +29,16 @@ class EspionageSecurityViewModel(
     fun processSecurityTick(state: GameState): GameState {
         if (state.gameOver.isGameOver) return state
 
-        var next = updateDomesticStability(state)
+        val cooledProtocols = state.internalSecurity.protocolCooldownMonths
+            .mapValues { (_, months) -> (months - 1).coerceAtLeast(0) }
+            .filterValues { it > 0 }
+        var next = state.copy(
+            internalSecurity = state.internalSecurity.copy(
+                securityFundsThisMonth = 0,
+                protocolCooldownMonths = cooledProtocols,
+            ),
+        )
+        next = updateDomesticStability(next)
         next = processExposureEffects(next)
         if (next.internalSecurity.coupRisk >= 100f) {
             return triggerCoup(next)
@@ -91,35 +100,70 @@ class EspionageSecurityViewModel(
     fun fundInternalSecurity(state: GameState, amount: Int): GameState {
         if (state.gameOver.isGameOver) return state
         if (amount <= 0) return state
-        val cost = amount * SECURITY_FUND_UNIT_COST
+        val already = state.internalSecurity.securityFundsThisMonth
+        val allowed = (MONTHLY_SECURITY_FUND_CAP - already).coerceAtLeast(0)
+        val units = amount.coerceAtMost(allowed)
+        if (units <= 0) return state
+        val cost = units * SECURITY_FUND_UNIT_COST
         if (state.vitals.budget < cost) return state
 
-        val instabilityDrop = amount * SECURITY_FUND_INSTABILITY_PER_UNIT
-        val coupDrop = amount * SECURITY_FUND_COUP_PER_UNIT
+        val diminishing = 1f / (1f + already * 0.35f)
+        val instabilityDrop = units * SECURITY_FUND_INSTABILITY_PER_UNIT * diminishing
+        val coupDrop = units * SECURITY_FUND_COUP_PER_UNIT * diminishing
 
         return state.copy(
             vitals = state.vitals.copy(
                 budget = state.vitals.budget - cost,
-                approval = (state.vitals.approval + amount * 0.15f).coerceIn(0f, 100f),
+                approval = (state.vitals.approval + units * 0.15f * diminishing).coerceIn(0f, 100f),
             ),
             internalSecurity = state.internalSecurity.copy(
                 instabilityScore = (state.internalSecurity.instabilityScore - instabilityDrop)
                     .coerceIn(0f, 100f),
                 coupRisk = (state.internalSecurity.coupRisk - coupDrop).coerceIn(0f, 100f),
+                securityFundsThisMonth = already + units,
             ),
         )
     }
 
     fun toggleSecurityProtocol(state: GameState, protocol: SecurityProtocol): GameState {
         if (state.gameOver.isGameOver) return state
+        val cooldown = state.internalSecurity.protocolCooldownMonths[protocol.name] ?: 0
+        if (cooldown > 0) return state
+
         val active = state.internalSecurity.activeProtocols.toMutableList()
-        if (protocol in active) {
-            active.remove(protocol)
-        } else {
+        val enabling = protocol !in active
+        if (enabling) {
+            if (state.vitals.budget < protocol.monthlyUpkeep) return state
             active.add(protocol)
+            val activationShock = when (protocol) {
+                SecurityProtocol.POLICE_STATE -> 4f
+                SecurityProtocol.CURFEW -> 2.5f
+                else -> 1f
+            }
+            return state.copy(
+                vitals = state.vitals.copy(
+                    budget = state.vitals.budget - protocol.monthlyUpkeep,
+                    approval = (state.vitals.approval + protocol.approvalPenalty * 0.5f)
+                        .coerceIn(0f, 100f),
+                ),
+                internalSecurity = state.internalSecurity.copy(
+                    activeProtocols = active,
+                    instabilityScore = (state.internalSecurity.instabilityScore + activationShock)
+                        .coerceIn(0f, 100f),
+                    protocolCooldownMonths = state.internalSecurity.protocolCooldownMonths +
+                        (protocol.name to PROTOCOL_TOGGLE_COOLDOWN_MONTHS),
+                ),
+            )
         }
+
+        active.remove(protocol)
         return state.copy(
-            internalSecurity = state.internalSecurity.copy(activeProtocols = active),
+            internalSecurity = state.internalSecurity.copy(
+                activeProtocols = active,
+                instabilityScore = (state.internalSecurity.instabilityScore + 2f).coerceIn(0f, 100f),
+                protocolCooldownMonths = state.internalSecurity.protocolCooldownMonths +
+                    (protocol.name to PROTOCOL_TOGGLE_COOLDOWN_MONTHS),
+            ),
         )
     }
 
@@ -470,6 +514,8 @@ class EspionageSecurityViewModel(
         const val SECURITY_FUND_UNIT_COST = 500_000_000L
         const val SECURITY_FUND_INSTABILITY_PER_UNIT = 3.5f
         const val SECURITY_FUND_COUP_PER_UNIT = 2f
+        const val MONTHLY_SECURITY_FUND_CAP = 8
+        const val PROTOCOL_TOGGLE_COOLDOWN_MONTHS = 3
         const val SPY_RECRUIT_COST = 2_000_000_000L
         const val MAX_INTEL_POINTS = 100
         const val MAX_MISSION_LOG = 12
@@ -494,8 +540,15 @@ class EspionageSecurityViewModel(
 
         fun maxAffordableSecurityUnits(state: GameState): Int {
             if (SECURITY_FUND_UNIT_COST <= 0L) return 0
-            return (state.vitals.budget / SECURITY_FUND_UNIT_COST).toInt().coerceAtLeast(0)
+            val byBudget = (state.vitals.budget / SECURITY_FUND_UNIT_COST).toInt().coerceAtLeast(0)
+            val remainingCap = (
+                MONTHLY_SECURITY_FUND_CAP - state.internalSecurity.securityFundsThisMonth
+                ).coerceAtLeast(0)
+            return minOf(byBudget, remainingCap)
         }
+
+        fun protocolCooldownRemaining(state: GameState, protocol: SecurityProtocol): Int =
+            state.internalSecurity.protocolCooldownMonths[protocol.name] ?: 0
     }
 }
 

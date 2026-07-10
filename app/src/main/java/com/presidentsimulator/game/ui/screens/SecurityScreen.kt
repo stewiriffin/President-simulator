@@ -176,7 +176,7 @@ private fun InternalSecurityView(
             NssPanel(modifier = Modifier.fillMaxWidth()) {
                 Text("Emergency Security Funding", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)
                 Text(
-                    text = "Each unit costs ${EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST.toBudgetString()} and lowers instability and coup risk.",
+                    text = "Each unit costs ${EspionageSecurityViewModel.SECURITY_FUND_UNIT_COST.toBudgetString()} and lowers instability and coup risk. Cap ${EspionageSecurityViewModel.MONTHLY_SECURITY_FUND_CAP}/mo (used ${security.securityFundsThisMonth}).",
                     fontSize = 11.sp,
                     color = NssMutedForeground,
                     modifier = Modifier.padding(top = 4.dp),
@@ -232,9 +232,11 @@ private fun InternalSecurityView(
         }
 
         items(SecurityProtocol.entries, key = { it.name }) { protocol ->
+            val cooldown = EspionageSecurityViewModel.protocolCooldownRemaining(state, protocol)
             SecurityMeasureCard(
                 protocol = protocol,
                 isActive = security.isProtocolActive(protocol),
+                cooldownMonths = cooldown,
                 onToggle = { viewModel.toggleSecurityProtocol(protocol) },
             )
         }
@@ -295,8 +297,10 @@ private fun RiskMeterCard(
 private fun SecurityMeasureCard(
     protocol: SecurityProtocol,
     isActive: Boolean,
+    cooldownMonths: Int,
     onToggle: () -> Unit,
 ) {
+    val canToggle = cooldownMonths <= 0
     NssPanel(modifier = Modifier.fillMaxWidth(), highlighted = isActive) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -326,12 +330,22 @@ private fun SecurityMeasureCard(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = if (isActive) "Deactivate Protocol" else "Activate Protocol",
+            text = when {
+                !canToggle -> "Cooldown ($cooldownMonths mo)"
+                isActive -> "Deactivate Protocol"
+                else -> "Activate Protocol"
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(NssCardShape)
-                .background(if (isActive) NssRed.copy(alpha = 0.85f) else NssPrimary)
-                .clickable(onClick = onToggle)
+                .background(
+                    when {
+                        !canToggle -> NssPrimary.copy(alpha = 0.35f)
+                        isActive -> NssRed.copy(alpha = 0.85f)
+                        else -> NssPrimary
+                    },
+                )
+                .clickable(enabled = canToggle, onClick = onToggle)
                 .padding(vertical = 10.dp),
             color = NssOnPhoto,
             fontWeight = FontWeight.Bold,

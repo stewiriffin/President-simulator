@@ -64,8 +64,14 @@ data class TradeDeal(
     val type: TradeType,
     val durationTicks: Int,
     val ticksRemaining: Int,
+    /** Consecutive failed settlement months; voids at [MAX_MISSED_DELIVERIES]. */
+    val missedDeliveries: Int = 0,
 ) {
     val monthlyVolume: Long get() = amountPerTick * pricePerUnit
+
+    companion object {
+        const val MAX_MISSED_DELIVERIES = 3
+    }
 }
 
 /**

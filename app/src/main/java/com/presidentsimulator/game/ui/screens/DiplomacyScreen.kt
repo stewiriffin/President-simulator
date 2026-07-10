@@ -139,7 +139,11 @@ fun DiplomacyScreen(
                                     status = rivalStatus(rival),
                                     threat = rivalThreat(rival),
                                     relations = rival.relationshipScore.coerceIn(0, 100),
-                                    tradeLabel = if (rival.hasTradeTreaty) "OPEN" else "STANDARD",
+                                    tradeLabel = when {
+                                        rival.hasEmbargo -> "EMBARGO"
+                                        rival.hasTradeTreaty -> "OPEN"
+                                        else -> "STANDARD"
+                                    },
                                     militaryLabel = if (activeWar?.targetCountryId == rival.id) "ACTIVE CONFLICT" else rival.stance.label.uppercase(),
                                     headerColor = rivalHeaderColor(rival),
                                     imageUrl = NssCardImages.nationCardImage(cardIndex),
@@ -444,6 +448,7 @@ private fun rivalFlagEmoji(rival: RivalNation): String = rival.flagEmoji.ifBlank
 }
 
 private fun rivalStatus(rival: RivalNation): String = when {
+    rival.hasEmbargo -> "EMBARGO"
     rival.relationshipScore >= 80 -> "ALLY"
     rival.relationshipScore >= 60 -> "PARTNER"
     rival.relationshipScore >= 40 -> "NEUTRAL"

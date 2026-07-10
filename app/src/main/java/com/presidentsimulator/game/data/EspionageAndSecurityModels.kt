@@ -11,6 +11,10 @@ data class InternalSecurityState(
     val instabilityScore: Float = 18f,
     val coupRisk: Float = 5f,
     val activeProtocols: List<SecurityProtocol> = emptyList(),
+    /** Emergency funding units spent this month (resets each tick). */
+    val securityFundsThisMonth: Int = 0,
+    /** Months until a protocol can be toggled again (keys = [SecurityProtocol.name]). */
+    val protocolCooldownMonths: Map<String, Int> = emptyMap(),
 ) {
     val monthlyUpkeep: Long
         get() = activeProtocols.sumOf { it.monthlyUpkeep }

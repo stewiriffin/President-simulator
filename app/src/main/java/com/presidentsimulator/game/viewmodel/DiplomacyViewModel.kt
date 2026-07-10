@@ -48,6 +48,7 @@ class DiplomacyViewModel(
         var sanctionsBudget = 0L
         var sanctionsApproval = 0f
         val playerStrength = state.effectiveCombatStrength
+        val embargoedThisTick = mutableSetOf<String>()
 
         val updatedRivals = state.diplomacy.rivals.map { rival ->
             var score = rival.relationshipScore.toFloat()
@@ -60,6 +61,9 @@ class DiplomacyViewModel(
             }
             if (rival.hasNonAggressionPact) {
                 score += 0.4f
+            }
+            if (rival.hasEmbargo) {
+                score -= 0.5f
             }
 
             score += random.nextInt(-3, 4)
@@ -75,7 +79,7 @@ class DiplomacyViewModel(
             val nextScore = score.roundToInt().coerceIn(-100, 100)
             val hostile = nextScore <= -25
             val militaryGrowth = if (hostile) 1.8 else 0.6
-            val economicGrowth = if (rival.hasTradeTreaty) 0.004 else 0.002
+            val economicGrowth = if (rival.hasTradeTreaty && !rival.hasEmbargo) 0.004 else 0.002
 
             if (
                 hostile &&
@@ -87,6 +91,26 @@ class DiplomacyViewModel(
                 sanctionsApproval += 0.6f
             }
 
+            var hasEmbargo = rival.hasEmbargo
+            var monthsOfEmbargo = rival.monthsOfEmbargo
+            if (
+                !hasEmbargo &&
+                nextScore <= -40 &&
+                rival.grudgeLevel >= 2 &&
+                state.diplomacy.activeWar?.targetCountryId != rival.id &&
+                random.nextFloat() < 0.12f
+            ) {
+                hasEmbargo = true
+                monthsOfEmbargo = 0
+                embargoedThisTick += rival.id
+            } else if (hasEmbargo) {
+                monthsOfEmbargo += 1
+                if (nextScore > -15 || monthsOfEmbargo >= 8) {
+                    hasEmbargo = false
+                    monthsOfEmbargo = 0
+                }
+            }
+
             val grudgeDecay = if (rival.grudgeLevel > 0 && random.nextFloat() < 0.12f) 1 else 0
 
             rival.copy(
@@ -94,6 +118,9 @@ class DiplomacyViewModel(
                 militaryStrength = (rival.militaryStrength + militaryGrowth).coerceAtMost(1_200.0),
                 economicPower = (rival.economicPower + economicGrowth).coerceAtMost(2.0),
                 grudgeLevel = (rival.grudgeLevel - grudgeDecay).coerceAtLeast(0),
+                hasEmbargo = hasEmbargo,
+                monthsOfEmbargo = monthsOfEmbargo,
+                hasTradeTreaty = if (hasEmbargo) false else rival.hasTradeTreaty,
             )
         }
 
@@ -109,12 +136,19 @@ class DiplomacyViewModel(
                 .coerceIn(0, MAX_INFLUENCE),
         )
 
+        val remainingDeals = if (embargoedThisTick.isEmpty()) {
+            state.trade.activeDeals
+        } else {
+            state.trade.activeDeals.filterNot { it.partnerCountryId in embargoedThisTick }
+        }
+
         return state.copy(
             vitals = state.vitals.copy(
                 budget = (state.vitals.budget - sanctionsBudget).coerceAtLeast(0L),
                 approval = (state.vitals.approval - sanctionsApproval).coerceIn(0f, 100f),
             ),
             diplomacy = diplomacy,
+            trade = state.trade.copy(activeDeals = remainingDeals),
         )
     }
 
@@ -430,6 +464,8 @@ class DiplomacyViewModel(
                     it.copy(
                         relationshipScore = (it.relationshipScore + relBonus).coerceIn(-100, 100),
                         grudgeLevel = (it.grudgeLevel - 1).coerceAtLeast(0),
+                        hasEmbargo = if (it.relationshipScore + relBonus >= -10) false else it.hasEmbargo,
+                        monthsOfEmbargo = if (it.relationshipScore + relBonus >= -10) 0 else it.monthsOfEmbargo,
                     )
                 }
                 .copy(
@@ -465,6 +501,8 @@ class DiplomacyViewModel(
                     it.copy(
                         relationshipScore = (it.relationshipScore + relBonus).coerceIn(-100, 100),
                         grudgeLevel = (it.grudgeLevel - 1).coerceAtLeast(0),
+                        hasEmbargo = if (it.relationshipScore + relBonus >= -10) false else it.hasEmbargo,
+                        monthsOfEmbargo = if (it.relationshipScore + relBonus >= -10) 0 else it.monthsOfEmbargo,
                     )
                 }
                 .copy(

@@ -137,6 +137,9 @@ data class RivalNation(
     val hasNonAggressionPact: Boolean = false,
     /** Lingering hostility after broken treaties or espionage (0–5). */
     val grudgeLevel: Int = 0,
+    /** Rival has cut commercial ties with the player. */
+    val hasEmbargo: Boolean = false,
+    val monthsOfEmbargo: Int = 0,
 ) {
     val stance: DiplomaticStance
         get() = when {

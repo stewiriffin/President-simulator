@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.presidentsimulator.game.data.ActiveCrisisState
 import com.presidentsimulator.game.data.DeploymentStatus
 import com.presidentsimulator.game.data.EventChoice
+import com.presidentsimulator.game.data.EventConsequence
 import com.presidentsimulator.game.data.MilitaryHardware
 import com.presidentsimulator.game.data.EventRepository
 import com.presidentsimulator.game.data.GameEvent
@@ -146,6 +148,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             if (next.gameOver.isGameOver) {
                 return@update next
             }
+
+            // Lingering crisis aftermath (strikes, epidemics, etc.).
+            next = processCrisisTick(next)
 
             // Science generation, social ministry funding, and health demographics.
             next = advancementEngine.processSocietyTick(next)
@@ -472,7 +477,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val restored = analyticsEngine.importGameStateFromJson(jsonString)
             _state.value = restored
-            _currentActiveEvent.value = null
+            _currentActiveEvent.value = restored.crisis.pendingEventId
+                ?.let { EventRepository.byId(it) }
             _turnSummary.value = null
             _missionResults.value = emptyList()
             pauseTimeAdvance()
@@ -792,14 +798,71 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val active = _currentActiveEvent.value ?: return
         if (choice !in active.choices) return
 
-        _state.update { choice.consequence.applyTo(it) }
+        _state.update { current ->
+            val applied = choice.consequence.applyTo(
+                current.copy(crisis = current.crisis.copy(pendingEventId = null)),
+            )
+            applied.copy(crisis = lingeringFrom(choice.consequence, active.title, applied.crisis))
+        }
         _currentActiveEvent.value = null
     }
 
     private fun maybeTriggerEvent() {
         if (_currentActiveEvent.value != null) return
+        val pendingId = _state.value.crisis.pendingEventId
+        if (pendingId != null) {
+            _currentActiveEvent.value = EventRepository.byId(pendingId)
+            return
+        }
+        if (_state.value.crisis.blocksNewEvents) return
         if (random.nextFloat() >= EVENT_CHANCE_PER_TICK) return
-        _currentActiveEvent.value = EventRepository.weightedEvent(_state.value, random)
+        val event = EventRepository.weightedEvent(_state.value, random)
+        _currentActiveEvent.value = event
+        _state.update {
+            it.copy(crisis = it.crisis.copy(pendingEventId = event.id))
+        }
+    }
+
+    private fun processCrisisTick(state: GameState): GameState {
+        val crisis = state.crisis
+        if (crisis.lingeringMonths <= 0) return state
+        val remaining = crisis.lingeringMonths - 1
+        return state.copy(
+            vitals = state.vitals.copy(
+                budget = state.vitals.budget + crisis.monthlyBudgetDelta,
+                approval = (state.vitals.approval + crisis.monthlyApprovalDelta).coerceIn(0f, 100f),
+            ),
+            internalSecurity = state.internalSecurity.copy(
+                instabilityScore = (
+                    state.internalSecurity.instabilityScore + crisis.monthlyInstabilityDelta
+                    ).coerceIn(0f, 100f),
+            ),
+            crisis = if (remaining <= 0) {
+                ActiveCrisisState()
+            } else {
+                crisis.copy(lingeringMonths = remaining)
+            },
+        )
+    }
+
+    private fun lingeringFrom(
+        consequence: EventConsequence,
+        title: String,
+        current: ActiveCrisisState,
+    ): ActiveCrisisState {
+        val severe = kotlin.math.abs(consequence.approvalChange) >= 8f ||
+            consequence.instabilityChange >= 8f ||
+            consequence.populationChange <= -100_000L ||
+            consequence.factoriesChange <= -2
+        if (!severe) return current.copy(pendingEventId = null)
+        return ActiveCrisisState(
+            pendingEventId = null,
+            lingeringMonths = 3,
+            monthlyApprovalDelta = consequence.approvalChange * 0.12f,
+            monthlyInstabilityDelta = consequence.instabilityChange * 0.2f,
+            monthlyBudgetDelta = (consequence.budgetChange * 0.08).toLong(),
+            label = title,
+        )
     }
 
     // ── Economy actions ──────────────────────────────────────────────────────

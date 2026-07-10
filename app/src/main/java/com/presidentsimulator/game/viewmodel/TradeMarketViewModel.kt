@@ -76,6 +76,7 @@ class TradeMarketViewModel(
         if (state.gameOver.isGameOver) return state
         if (amount <= 0L) return state
         val rival = state.diplomacy.rivalById(partnerCountryId) ?: return state
+        if (rival.hasEmbargo) return state
         if (rival.relationshipScore <= HOSTILE_RELATION_THRESHOLD) return state
 
         val quote = state.market.quote(commodity)
@@ -225,7 +226,7 @@ class TradeMarketViewModel(
         return typed.roundToLong().coerceAtLeast(1L)
     }
 
-    // ── Internals ────────────────────────────────────────────────────────────
+    // ?? Internals ????????????????????????????????????????????????????????????
 
     private fun updateMarketPrices(state: GameState): GameState {
         val hasMacroEvent = state.diplomacy.activeWar != null
@@ -272,13 +273,24 @@ class TradeMarketViewModel(
     private fun settleActiveDeals(state: GameState): DealSettlement {
         var budget = state.vitals.budget
         var production = state.production
+        var diplomacy = state.diplomacy
+        var approval = state.vitals.approval
         var exportIncome = 0L
         var importSpend = 0L
         val remaining = mutableListOf<TradeDeal>()
 
         state.trade.activeDeals.forEach { deal ->
-            val partnerExists = state.diplomacy.rivalById(deal.partnerCountryId) != null
-            if (!partnerExists) return@forEach
+            val partner = state.diplomacy.rivalById(deal.partnerCountryId) ?: return@forEach
+            if (partner.hasEmbargo) {
+                diplomacy = diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                    rival.copy(
+                        relationshipScore = (rival.relationshipScore - 6).coerceIn(-100, 100),
+                        grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
+                    )
+                }
+                approval -= 0.4f
+                return@forEach
+            }
 
             when (deal.type) {
                 TradeType.EXPORT -> {
@@ -290,12 +302,35 @@ class TradeMarketViewModel(
                         exportIncome += income
                         val nextTicks = deal.ticksRemaining - 1
                         if (nextTicks > 0) {
-                            remaining += deal.copy(ticksRemaining = nextTicks)
+                            remaining += deal.copy(
+                                ticksRemaining = nextTicks,
+                                missedDeliveries = (deal.missedDeliveries - 1).coerceAtLeast(0),
+                            )
                         }
-                    }
-                    // Insufficient surplus: contract skips this month but remains active.
-                    else if (deal.ticksRemaining > 0) {
-                        remaining += deal
+                    } else if (deal.ticksRemaining > 0) {
+                        val misses = deal.missedDeliveries + 1
+                        diplomacy = diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                            rival.copy(
+                                relationshipScore = (rival.relationshipScore - 4).coerceIn(-100, 100),
+                                grudgeLevel = if (misses % 2 == 0) {
+                                    (rival.grudgeLevel + 1).coerceAtMost(5)
+                                } else {
+                                    rival.grudgeLevel
+                                },
+                            )
+                        }
+                        approval -= 0.3f
+                        if (misses >= TradeDeal.MAX_MISSED_DELIVERIES) {
+                            diplomacy = diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                                rival.copy(
+                                    relationshipScore = (rival.relationshipScore - 8).coerceIn(-100, 100),
+                                    grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
+                                )
+                            }
+                            approval -= 0.5f
+                        } else {
+                            remaining += deal.copy(missedDeliveries = misses)
+                        }
                     }
                 }
                 TradeType.IMPORT -> {
@@ -306,10 +341,35 @@ class TradeMarketViewModel(
                         importSpend += cost
                         val nextTicks = deal.ticksRemaining - 1
                         if (nextTicks > 0) {
-                            remaining += deal.copy(ticksRemaining = nextTicks)
+                            remaining += deal.copy(
+                                ticksRemaining = nextTicks,
+                                missedDeliveries = (deal.missedDeliveries - 1).coerceAtLeast(0),
+                            )
                         }
                     } else if (deal.ticksRemaining > 0) {
-                        remaining += deal
+                        val misses = deal.missedDeliveries + 1
+                        diplomacy = diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                            rival.copy(
+                                relationshipScore = (rival.relationshipScore - 4).coerceIn(-100, 100),
+                                grudgeLevel = if (misses % 2 == 0) {
+                                    (rival.grudgeLevel + 1).coerceAtMost(5)
+                                } else {
+                                    rival.grudgeLevel
+                                },
+                            )
+                        }
+                        approval -= 0.3f
+                        if (misses >= TradeDeal.MAX_MISSED_DELIVERIES) {
+                            diplomacy = diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                                rival.copy(
+                                    relationshipScore = (rival.relationshipScore - 8).coerceIn(-100, 100),
+                                    grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
+                                )
+                            }
+                            approval -= 0.5f
+                        } else {
+                            remaining += deal.copy(missedDeliveries = misses)
+                        }
                     }
                 }
             }
@@ -317,14 +377,19 @@ class TradeMarketViewModel(
 
         return DealSettlement(
             state = state.copy(
-                vitals = state.vitals.copy(budget = budget),
+                vitals = state.vitals.copy(
+                    budget = budget,
+                    approval = approval.coerceIn(0f, 100f),
+                ),
                 production = production,
+                diplomacy = diplomacy,
             ),
             remainingDeals = remaining,
             exportIncome = exportIncome,
             importSpend = importSpend,
         )
     }
+
 
     companion object {
         const val MIN_TARIFF = 0f
@@ -363,6 +428,7 @@ class TradeMarketViewModel(
         fun canProposeDeal(state: GameState, partnerCountryId: String): Boolean {
             if (state.gameOver.isGameOver) return false
             val rival = state.diplomacy.rivalById(partnerCountryId) ?: return false
+            if (rival.hasEmbargo) return false
             return rival.relationshipScore > HOSTILE_RELATION_THRESHOLD
         }
     }

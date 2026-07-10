@@ -30,6 +30,8 @@ data class GameState(
     val nextElectionYear: Int = 2030,
     /** Nation the player leads — chosen at new game. */
     val playerNation: PlayerNation = PlayerNation(),
+    /** Pending crisis dialog and/or multi-month aftermath. */
+    val crisis: ActiveCrisisState = ActiveCrisisState(),
 ) {
     val dateLabel: String
         get() = "${monthName(month)} $year"
@@ -143,6 +145,22 @@ data class GameEvent(
     val choices: List<EventChoice>,
 )
 
+/**
+ * Save-safe crisis: pending dialog id and optional lingering monthly fallout.
+ */
+@Serializable
+data class ActiveCrisisState(
+    val pendingEventId: String? = null,
+    val lingeringMonths: Int = 0,
+    val monthlyApprovalDelta: Float = 0f,
+    val monthlyInstabilityDelta: Float = 0f,
+    val monthlyBudgetDelta: Long = 0L,
+    val label: String = "",
+) {
+    val blocksNewEvents: Boolean
+        get() = pendingEventId != null || lingeringMonths > 0
+}
+
 data class EventChoice(
     val text: String,
     val consequence: EventConsequence,
@@ -239,6 +257,8 @@ enum class Ministry(
  * Static pool of macro-level national events drawn by the crisis engine.
  */
 object EventRepository {
+
+    fun byId(id: String): GameEvent? = eventPool.find { it.id == id }
 
     val eventPool: List<GameEvent> = listOf(
         // Existing Events

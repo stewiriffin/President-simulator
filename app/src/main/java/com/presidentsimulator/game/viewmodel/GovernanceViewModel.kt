@@ -210,12 +210,38 @@ class GovernanceViewModel(
         if (state.gameOver.isGameOver) return state
         val alliance = state.governance.allianceById(allianceId) ?: return state
         if (!state.playerNation.matchesCountryId(alliance.leaderCountryId)) return state
+
+        var diplomacy = state.diplomacy
+        alliance.memberCountryIds
+            .filterNot { state.playerNation.matchesCountryId(it) }
+            .forEach { memberId ->
+                diplomacy = diplomacy.updateRival(memberId) { rival ->
+                    rival.copy(
+                        relationshipScore = (rival.relationshipScore - 15).coerceIn(-100, 100),
+                        grudgeLevel = (rival.grudgeLevel + 2).coerceAtMost(5),
+                        hasNonAggressionPact = false,
+                    )
+                }
+            }
+
+        val war = diplomacy.activeWar
+        val cooledWar = if (war != null) {
+            war.copy(warProgress = (war.warProgress - 8f).coerceIn(-100f, 100f))
+        } else {
+            null
+        }
+
         return state.copy(
+            vitals = state.vitals.copy(
+                approval = (state.vitals.approval - 2f).coerceIn(0f, 100f),
+            ),
             governance = state.governance.copy(
                 activeAlliances = state.governance.activeAlliances.filterNot {
                     it.allianceId == allianceId
                 },
+                diplomaticInfluence = (state.governance.diplomaticInfluence - 10).coerceAtLeast(0),
             ),
+            diplomacy = diplomacy.copy(activeWar = cooledWar ?: war),
         )
     }
 
