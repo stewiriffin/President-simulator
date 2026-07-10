@@ -66,7 +66,12 @@ class DemographicsCampaignViewModel {
         academics += (state.society.educationFunding - 0.5f) * 10f
         academics += state.research.unlockedTechIds.size * 0.4f
         academics += (state.society.universities - 6) * 0.6f
+        academics += (state.society.cultureFunding - 0.4f) * 6f
         working += (state.society.healthFunding - 0.45f) * 6f
+        working += (state.society.cultureScore - 50f) * 0.04f
+        if (state.society.cultureFunding >= 0.65f) {
+            reasons += "Strong cultural funding lifts civic mood"
+        }
 
         if (state.legal.isActive("universal_healthcare")) working += 1.2f
         if (state.legal.isActive("minimum_wage")) {

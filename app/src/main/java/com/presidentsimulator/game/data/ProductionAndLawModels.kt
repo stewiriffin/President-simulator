@@ -116,6 +116,16 @@ data class LegalState(
             return modifier
         }
 
+    /** Multiplier on recruit yield / inverse of recruit cost from active laws. */
+    val combinedMilitaryRecruitModifier: Float
+        get() {
+            var modifier = 1f
+            activeLaws.forEach { law ->
+                modifier *= law.militaryRecruitModifier
+            }
+            return modifier
+        }
+
     val combinedFoodDemandModifier: Float
         get() {
             var modifier = 1f

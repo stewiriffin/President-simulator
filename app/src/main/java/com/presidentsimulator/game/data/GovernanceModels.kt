@@ -118,10 +118,15 @@ data class GlobalGovernanceState(
     val globalTaxActive: Boolean = false,
     val peacekeepingActive: Boolean = false,
     val weaponsBanActive: Boolean = false,
+    /** Months remaining for timed UN effects (keys = [ResolutionType.name]). */
+    val resolutionMonthsRemaining: Map<String, Int> = emptyMap(),
     val lastResolutionResult: String = "",
 ) {
     fun allianceById(id: String): Alliance? = activeAlliances.find { it.allianceId == id }
 
     fun alliancesFor(countryId: String): List<Alliance> =
         activeAlliances.filter { countryId in it.memberCountryIds }
+
+    fun monthsRemaining(type: ResolutionType): Int =
+        resolutionMonthsRemaining[type.name] ?: 0
 }

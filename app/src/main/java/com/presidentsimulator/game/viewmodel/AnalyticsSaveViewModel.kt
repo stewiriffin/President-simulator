@@ -3,6 +3,7 @@ package com.presidentsimulator.game.viewmodel
 import com.presidentsimulator.game.data.AnalyticsState
 import com.presidentsimulator.game.data.GameState
 import com.presidentsimulator.game.data.HistoricalSnapshot
+import com.presidentsimulator.game.data.ResolutionType
 import com.presidentsimulator.game.data.SaveLoadFeedback
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -139,6 +140,49 @@ class AnalyticsSaveViewModel {
         ): Float {
             if (history.size < 2) return 0f
             return selector(history.last()) - selector(history.first())
+        }
+
+        /** Trend-based advisories derived from recent history (no persistence). */
+        fun buildAdvisories(state: GameState): List<String> {
+            val history = state.analytics.history
+            if (history.size < 3) return emptyList()
+            val window = history.takeLast(6)
+            val advisories = mutableListOf<String>()
+
+            val approvalDelta = trendDeltaFloat(window) { it.approval }
+            if (approvalDelta <= -6f) {
+                advisories += "Approval down ${"%.0f".format(-approvalDelta)} pts — run a campaign or cut taxes"
+            } else if (approvalDelta >= 6f) {
+                advisories += "Approval rising — a good window for costly reforms"
+            }
+
+            val gdpDelta = trendDelta(window) { it.gdp }
+            if (gdpDelta < 0L && state.economy.factories >= 5) {
+                advisories += "GDP soft despite industry — check energy, trade, or shortages"
+            }
+
+            val budgetDelta = trendDelta(window) { it.budget }
+            if (budgetDelta < -5_000_000_000L) {
+                advisories += "Treasury draining fast — trim military upkeep or raise tariffs"
+            }
+
+            if (state.production.foodShortage) {
+                advisories += "Food shortage active — expand farms or import grain"
+            }
+            if (state.production.energyShortage) {
+                advisories += "Energy shortage active — build power plants"
+            }
+            if (state.diplomacy.activeWar != null) {
+                advisories += "War ongoing — alliances and peacekeeping can shift the front"
+            }
+            if (state.governance.peacekeepingActive) {
+                val months = state.governance.monthsRemaining(ResolutionType.PEACEKEEPING_DEPLOYMENT)
+                if (months > 0) {
+                    advisories += "Peacekeepers deployed ($months mo left) — fronts are cooling"
+                }
+            }
+
+            return advisories.take(4)
         }
     }
 }

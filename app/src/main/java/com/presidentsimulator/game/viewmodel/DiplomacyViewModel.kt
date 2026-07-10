@@ -170,7 +170,8 @@ class DiplomacyViewModel(
             victory = false,
         )
 
-        val playerPower = state.effectiveCombatStrength.coerceAtLeast(1.0)
+        val allianceSupport = alliedCombatSupport(state, war.targetCountryId)
+        val playerPower = (state.effectiveCombatStrength + allianceSupport).coerceAtLeast(1.0)
         val enemyPower = enemy.militaryStrength.coerceAtLeast(1.0)
         val winProbability = (playerPower / (playerPower + enemyPower)).toFloat()
         val playerWonSkirmish = random.nextFloat() < winProbability
@@ -216,6 +217,9 @@ class DiplomacyViewModel(
                 append("enemy ${enemyCasualties.toCasualtyString()}")
                 if (hardwareLossTanks > 0 || hardwareLossJets > 0) {
                     append(" · hardware -$hardwareLossTanks tanks / -$hardwareLossJets jets")
+                }
+                if (allianceSupport > 0.5) {
+                    append(" · allies +${allianceSupport.roundToInt()} power")
                 }
             },
         )
@@ -489,7 +493,11 @@ class DiplomacyViewModel(
     fun recruitPersonnel(state: GameState, amount: Long): GameState {
         if (amount <= 0L) return state
         val perk = NationalPerkEffects.forNationId(state.playerNation.id)
-        val cost = (amount * RECRUIT_COST_PER_SOLDIER * NationalPerkEffects.recruitCostMultiplier(perk)).toLong()
+        val lawRecruit = state.legal.combinedMilitaryRecruitModifier.coerceAtLeast(0.5f)
+        val cost = (
+            amount * RECRUIT_COST_PER_SOLDIER *
+                NationalPerkEffects.recruitCostMultiplier(perk) / lawRecruit
+            ).toLong().coerceAtLeast(1L)
         if (state.vitals.budget < cost) return state
         return state.copy(
             vitals = state.vitals.copy(budget = state.vitals.budget - cost),
@@ -567,6 +575,23 @@ class DiplomacyViewModel(
     }
 
     // ── Internals ────────────────────────────────────────────────────────────
+
+    /** Allied members (excluding player and war target) contribute a fraction of their strength. */
+    private fun alliedCombatSupport(state: GameState, warTargetId: String): Double {
+        val playerId = state.playerNation.id
+        return state.governance.alliancesFor(playerId)
+            .filter { warTargetId !in it.memberCountryIds }
+            .sumOf { alliance ->
+                alliance.memberCountryIds
+                    .filter { memberId ->
+                        !state.playerNation.matchesCountryId(memberId) && memberId != warTargetId
+                    }
+                    .sumOf { memberId ->
+                        (state.diplomacy.rivalById(memberId)?.militaryStrength ?: 0.0) *
+                            ALLIED_SUPPORT_FRACTION
+                    }
+            }
+    }
 
     private fun militaryPressureScore(state: GameState): Float {
         val spendingRatio = state.military.monthlyUpkeep.toFloat() /
@@ -710,6 +735,7 @@ class DiplomacyViewModel(
         const val EARLY_SETTLEMENT_MIN_PROGRESS = 60f
         const val RECRUIT_COST_PER_SOLDIER = 50_000L
         const val RECRUIT_BATCH_SIZE = 10_000L
+        const val ALLIED_SUPPORT_FRACTION = 0.35
         const val TANK_UNIT_COST = 15_000_000L
         const val JET_UNIT_COST = 80_000_000L
         const val MIN_SALARY_FUNDING = 0.5f
@@ -717,7 +743,13 @@ class DiplomacyViewModel(
 
         fun maxRecruitable(state: GameState): Int {
             if (RECRUIT_COST_PER_SOLDIER <= 0L) return 0
-            return (state.vitals.budget / RECRUIT_COST_PER_SOLDIER).toInt().coerceAtLeast(0)
+            val perk = NationalPerkEffects.forNationId(state.playerNation.id)
+            val lawRecruit = state.legal.combinedMilitaryRecruitModifier.coerceAtLeast(0.5f)
+            val unitCost = (
+                RECRUIT_COST_PER_SOLDIER *
+                    NationalPerkEffects.recruitCostMultiplier(perk) / lawRecruit
+                ).toLong().coerceAtLeast(1L)
+            return (state.vitals.budget / unitCost).toInt().coerceAtLeast(0)
         }
 
         fun maxAffordableHardware(state: GameState, hardware: MilitaryHardware): Int {

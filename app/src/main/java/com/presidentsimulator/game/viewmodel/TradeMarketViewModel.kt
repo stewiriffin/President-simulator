@@ -107,10 +107,20 @@ class TradeMarketViewModel(
 
     fun cancelTradeDeal(state: GameState, dealId: String): GameState {
         if (state.gameOver.isGameOver) return state
+        val deal = state.trade.activeDeals.find { it.dealId == dealId } ?: return state
         return state.copy(
             trade = state.trade.copy(
                 activeDeals = state.trade.activeDeals.filterNot { it.dealId == dealId },
             ),
+            vitals = state.vitals.copy(
+                approval = (state.vitals.approval - 0.5f).coerceIn(0f, 100f),
+            ),
+            diplomacy = state.diplomacy.updateRival(deal.partnerCountryId) { rival ->
+                rival.copy(
+                    relationshipScore = (rival.relationshipScore - 8).coerceIn(-100, 100),
+                    grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
+                )
+            },
         )
     }
 

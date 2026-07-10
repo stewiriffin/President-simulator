@@ -198,11 +198,24 @@ private fun AssemblyPanel(
 
 @Composable
 private fun ActiveModifiersCard(state: GameState) {
+    val g = state.governance
     val active = buildList {
-        if (state.governance.nuclearEmbargoActive) add("Nuclear Embargo")
-        if (state.governance.globalTaxActive) add("Global Tax")
-        if (state.governance.peacekeepingActive) add("Peacekeeping")
-        if (state.governance.weaponsBanActive) add("Weapons Ban")
+        if (g.nuclearEmbargoActive) {
+            val mo = g.monthsRemaining(ResolutionType.NUCLEAR_EMBARGO)
+            add(if (mo > 0) "Nuclear Embargo (${mo}mo)" else "Nuclear Embargo")
+        }
+        if (g.globalTaxActive) {
+            val mo = g.monthsRemaining(ResolutionType.GLOBAL_TAX)
+            add(if (mo > 0) "Global Tax (${mo}mo)" else "Global Tax")
+        }
+        if (g.peacekeepingActive) {
+            val mo = g.monthsRemaining(ResolutionType.PEACEKEEPING_DEPLOYMENT)
+            add(if (mo > 0) "Peacekeeping (${mo}mo)" else "Peacekeeping")
+        }
+        if (g.weaponsBanActive) {
+            val mo = g.monthsRemaining(ResolutionType.WEAPONS_BAN)
+            add(if (mo > 0) "Weapons Ban (${mo}mo)" else "Weapons Ban")
+        }
     }
     NssPanel(modifier = Modifier.fillMaxWidth()) {
         Text("Active Global Mandates", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = NssForeground)

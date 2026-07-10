@@ -326,16 +326,25 @@ class GovernanceViewModel(
     }
 
     private fun applyPassedResolution(state: GameState, resolution: UNResolution): GameState {
+        val duration = resolutionDurationMonths(resolution.type)
+        fun withDuration(governance: GlobalGovernanceState): GlobalGovernanceState {
+            if (duration <= 0) return governance
+            return governance.copy(
+                resolutionMonthsRemaining = governance.resolutionMonthsRemaining +
+                    (resolution.type.name to duration),
+            )
+        }
+
         return when (resolution.type) {
             ResolutionType.GLOBAL_TAX -> state.copy(
-                governance = state.governance.copy(globalTaxActive = true),
+                governance = withDuration(state.governance.copy(globalTaxActive = true)),
                 vitals = state.vitals.copy(
                     budget = state.vitals.budget - GLOBAL_TAX_COST,
                     approval = (state.vitals.approval + 3f).coerceIn(0f, 100f),
                 ),
             )
             ResolutionType.NUCLEAR_EMBARGO -> state.copy(
-                governance = state.governance.copy(nuclearEmbargoActive = true),
+                governance = withDuration(state.governance.copy(nuclearEmbargoActive = true)),
                 vitals = state.vitals.copy(
                     approval = (state.vitals.approval + 4f).coerceIn(0f, 100f),
                 ),
@@ -346,7 +355,7 @@ class GovernanceViewModel(
                     warProgress = (war.warProgress * 0.7f).coerceIn(-100f, 100f),
                 )
                 state.copy(
-                    governance = state.governance.copy(peacekeepingActive = true),
+                    governance = withDuration(state.governance.copy(peacekeepingActive = true)),
                     diplomacy = state.diplomacy.copy(activeWar = cooledWar),
                     vitals = state.vitals.copy(
                         approval = (state.vitals.approval + 5f).coerceIn(0f, 100f),
@@ -364,6 +373,7 @@ class GovernanceViewModel(
                             relationshipScore = (rival.relationshipScore - 25).coerceIn(-100, 100),
                             militaryStrength = (rival.militaryStrength * 0.9).coerceAtLeast(80.0),
                             hasTradeTreaty = false,
+                            grudgeLevel = (rival.grudgeLevel + 1).coerceAtMost(5),
                         )
                     },
                     vitals = state.vitals.copy(
@@ -372,7 +382,7 @@ class GovernanceViewModel(
                 )
             }
             ResolutionType.WEAPONS_BAN -> state.copy(
-                governance = state.governance.copy(weaponsBanActive = true),
+                governance = withDuration(state.governance.copy(weaponsBanActive = true)),
                 vitals = state.vitals.copy(
                     approval = (state.vitals.approval + 3f).coerceIn(0f, 100f),
                 ),
@@ -387,7 +397,32 @@ class GovernanceViewModel(
     private fun applyPassiveGovernanceEffects(state: GameState): GameState {
         var budget = state.vitals.budget
         var approval = state.vitals.approval
-        val governance = state.governance
+        var governance = state.governance
+        var diplomacy = state.diplomacy
+
+        val decremented = governance.resolutionMonthsRemaining
+            .mapValues { (_, months) -> (months - 1).coerceAtLeast(0) }
+            .filterValues { it > 0 }
+
+        fun timedOrLegacy(type: ResolutionType, legacyActive: Boolean): Boolean {
+            val key = type.name
+            return if (governance.resolutionMonthsRemaining.containsKey(key)) {
+                (decremented[key] ?: 0) > 0
+            } else {
+                legacyActive
+            }
+        }
+
+        governance = governance.copy(
+            resolutionMonthsRemaining = decremented,
+            globalTaxActive = timedOrLegacy(ResolutionType.GLOBAL_TAX, governance.globalTaxActive),
+            nuclearEmbargoActive = timedOrLegacy(ResolutionType.NUCLEAR_EMBARGO, governance.nuclearEmbargoActive),
+            peacekeepingActive = timedOrLegacy(
+                ResolutionType.PEACEKEEPING_DEPLOYMENT,
+                governance.peacekeepingActive,
+            ),
+            weaponsBanActive = timedOrLegacy(ResolutionType.WEAPONS_BAN, governance.weaponsBanActive),
+        )
 
         if (governance.globalTaxActive) {
             budget -= GLOBAL_TAX_UPKEEP
@@ -396,6 +431,17 @@ class GovernanceViewModel(
         if (governance.peacekeepingActive) {
             budget -= PEACEKEEPING_UPKEEP
             approval += 0.3f
+            val war = diplomacy.activeWar
+            if (war != null) {
+                val cooled = when {
+                    war.warProgress > 2f -> war.warProgress - 2.5f
+                    war.warProgress < -2f -> war.warProgress + 2.5f
+                    else -> war.warProgress * 0.85f
+                }
+                diplomacy = diplomacy.copy(
+                    activeWar = war.copy(warProgress = cooled.coerceIn(-100f, 100f)),
+                )
+            }
         }
 
         return state.copy(
@@ -403,6 +449,8 @@ class GovernanceViewModel(
                 budget = budget,
                 approval = approval.coerceIn(0f, 100f),
             ),
+            governance = governance,
+            diplomacy = diplomacy,
         )
     }
 
@@ -418,6 +466,18 @@ class GovernanceViewModel(
         const val AI_VOTE_CHANCE_PER_TICK = 0.55f
         const val NUCLEAR_EMBARGO_STRENGTH_PENALTY = 0.88
         const val WEAPONS_BAN_STRENGTH_PENALTY = 0.94
+        const val GLOBAL_TAX_DURATION_MONTHS = 24
+        const val NUCLEAR_EMBARGO_DURATION_MONTHS = 18
+        const val PEACEKEEPING_DURATION_MONTHS = 12
+        const val WEAPONS_BAN_DURATION_MONTHS = 18
+
+        fun resolutionDurationMonths(type: ResolutionType): Int = when (type) {
+            ResolutionType.GLOBAL_TAX -> GLOBAL_TAX_DURATION_MONTHS
+            ResolutionType.NUCLEAR_EMBARGO -> NUCLEAR_EMBARGO_DURATION_MONTHS
+            ResolutionType.PEACEKEEPING_DEPLOYMENT -> PEACEKEEPING_DURATION_MONTHS
+            ResolutionType.WEAPONS_BAN -> WEAPONS_BAN_DURATION_MONTHS
+            ResolutionType.TRADE_SANCTIONS -> 0
+        }
 
         fun canPropose(state: GameState, type: ResolutionType): Boolean {
             if (state.gameOver.isGameOver) return false
